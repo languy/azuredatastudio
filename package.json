@@ -1,7 +1,7 @@
 {
   "name": "azuredatastudio",
   "version": "1.32.0",
-  "distro": "9c5f9c1fe9efe543ee235b94d5fdc57553c2d271",
+  "distro": "56629278c8076969bc8514aa6a3f129268312d5b",
   "author": {
     "name": "Microsoft Corporation"
   },
@@ -84,6 +84,7 @@
     "jschardet": "3.0.0",
     "mark.js": "^8.11.1",
     "keytar": "7.2.0",
+    "mark.js": "^8.11.1",
     "minimist": "^1.2.5",
     "native-is-elevated": "0.4.3",
     "native-keymap": "2.2.1",
@@ -96,8 +97,8 @@
     "rxjs": "5.4.0",
     "sanitize-html": "1.19.1",
     "semver-umd": "^5.5.7",
-    "slickgrid": "github:kburtram/SlickGrid#2.3.33",
     "spdlog": "^0.13.0",
+    "slickgrid": "github:Microsoft/SlickGrid.ADS#2.3.34",
     "sudo-prompt": "9.2.1",
     "tas-client-umd": "0.1.4",
     "turndown": "^7.0.0",
@@ -224,9 +225,9 @@
     "style-loader": "^1.0.0",
     "temp-write": "^3.4.0",
     "ts-loader": "^6.2.1",
-    "typemoq": "^0.3.2",
     "tsec": "0.1.4",
     "typescript": "^4.4.0-dev.20210607",
+    "typemoq": "^0.3.2",
     "typescript-formatter": "7.1.0",
     "underscore": "^1.12.1",
     "vinyl": "^2.0.0",

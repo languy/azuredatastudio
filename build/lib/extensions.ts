@@ -252,7 +252,6 @@ const externalExtensions = [
 	'arc',
 	'asde-deployment',
 	'azcli',
-	'azdata',
 	'azurehybridtoolkit',
 	'azuremonitor',
 	'cms',
@@ -268,6 +267,13 @@ const externalExtensions = [
 	'sql-assessment',
 	'sql-database-projects',
 	'sql-migration'
+];
+
+/**
+ * Extensions that are built into ADS but should be packaged externally as well for VS Code.
+ */
+export const vscodeExternalExtensions = [
+	'data-workspace'
 ];
 
 // extensions that require a rebuild since they have native parts
@@ -427,7 +433,7 @@ export function packageExternalExtensionsStream(): NodeJS.ReadWriteStream {
 			const extensionName = path.basename(extensionPath);
 			return { name: extensionName, path: extensionPath };
 		})
-		.filter(({ name }) => externalExtensions.indexOf(name) >= 0);
+		.filter(({ name }) => externalExtensions.indexOf(name) >= 0 || vscodeExternalExtensions.indexOf(name) >= 0);
 
 	const builtExtensions = extenalExtensionDescriptions.map(extension => {
 		return fromLocal(extension.path, false)

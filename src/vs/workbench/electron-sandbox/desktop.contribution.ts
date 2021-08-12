@@ -5,6 +5,7 @@
 
 import { Registry } from 'vs/platform/registry/common/platform';
 import { localize } from 'vs/nls';
+import product from 'vs/platform/product/common/product'; // {{SQL CARBON EDIT}}
 import { MenuRegistry, MenuId, registerAction2 } from 'vs/platform/actions/common/actions';
 import { IConfigurationRegistry, Extensions as ConfigurationExtensions, ConfigurationScope } from 'vs/platform/configuration/common/configurationRegistry';
 import { KeyMod, KeyCode } from 'vs/base/common/keyCodes';
@@ -89,13 +90,15 @@ import * as locConstants from 'sql/base/common/locConstants'; // {{SQL CARBON ED
 // Menu
 (function registerMenu(): void {
 
-	MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, { // {{SQL CARBON EDIT}} - Add install VSIX menu item
-		group: '5.1_installExtension',
-		command: {
-			id: SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID,
-			title: locConstants.desktopContributionMiinstallVsix
-		}
-	});
+	if (product.quality !== 'saw') { // {{SQL CARBON EDIT}} - Remove items that are not required
+		MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, { // {{SQL CARBON EDIT}} - Add install VSIX menu item
+			group: '5.1_installExtension',
+			command: {
+				id: SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID,
+				title: locConstants.desktopContributionMiinstallVsix
+			}
+		});
+	}
 
 	// Quit
 	MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, {
