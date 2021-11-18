@@ -2,7 +2,7 @@
 	"name": "sql-migration",
 	"displayName": "%displayName%",
 	"description": "%description%",
-	"version": "0.1.9",
+	"version": "0.1.10",
 	"publisher": "Microsoft",
 	"preview": true,
 	"license": "https://raw.githubusercontent.com/Microsoft/azuredatastudio/main/LICENSE.txt",
@@ -19,6 +19,12 @@
 		"onCommand:sqlmigration.sendfeedback",
 		"onCommand:sqlmigration.openNotebooks"
 	],
+	"capabilities": {
+		"virtualWorkspaces": false,
+		"untrustedWorkspaces": {
+		  "supported": true
+		}
+	},
 	"main": "./out/main",
 	"repository": {
 		"type": "git",
