@@ -74,6 +74,11 @@ export const kustoClusterQuery = `type == "${azureResource.AzureResourceType.kus
 export const cosmosMongoDbQuery = `(type == "${azureResource.AzureResourceType.cosmosDbAccount}" and kind == "${Constants.mongoDbKind}") or type == "${azureResource.AzureResourceType.cosmosDbMongoCluster}"`;
 
 /**
+ * Lists all Cosmos DB for NoSQL accounts
+ */
+export const cosmosNoSqlQuery = `type == "${azureResource.AzureResourceType.cosmosDbAccount}" and kind == "${Constants.cosmosDbNoSqlKind}"`;
+
+/**
  * Lists all Cosmos DB for MongoDB accounts
  */
 export const cosmosPostgresDbQuery = `type == "${azureResource.AzureResourceType.postgresServerGroup}" or type == "${azureResource.AzureResourceType.postgresServerGroupv2}"`;
