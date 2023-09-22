@@ -58,17 +58,14 @@ export class CosmosDbNoSqlTreeDataProvider extends ResourceTreeDataProviderBase<
 		};
 	}
 
-	public async getRootChildren(): Promise<azdata.TreeItem[]> {
-		return [{
+	public async getRootChild(): Promise<azdata.TreeItem> {
+		return {
 			id: CosmosDbNoSqlTreeDataProvider.CONTAINER_ID,
 			label: CosmosDbNoSqlTreeDataProvider.CONTAINER_LABEL,
-			iconPath: {
-				dark: this._extensionContext.asAbsolutePath('resources/dark/folder_inverse.svg'),
-				light: this._extensionContext.asAbsolutePath('resources/light/folder.svg')
-			},
+			iconPath: this._extensionContext.asAbsolutePath('resources/cosmosDb.svg'),
 			collapsibleState: TreeItemCollapsibleState.Collapsed,
 			contextValue: AzureResourceItemType.databaseServerContainer
-		}];
+		};
 	}
 }
 
