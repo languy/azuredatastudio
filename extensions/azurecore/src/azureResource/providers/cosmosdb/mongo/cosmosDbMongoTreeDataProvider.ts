@@ -28,7 +28,7 @@ export class CosmosDbMongoTreeDataProvider extends ResourceTreeDataProviderBase<
 
 	public getTreeItemForResource(databaseServer: AzureResourceMongoDatabaseServer, account: azdata.Account): azdata.TreeItem {
 		return {
-			id: `${AzureResourcePrefixes.cosmosdb}${account.key.accountId}${databaseServer.tenant}${databaseServer.id ?? databaseServer.name}`,
+			id: `${AzureResourcePrefixes.cosmosdbMongo}${account.key.accountId}${databaseServer.tenant}${databaseServer.id ?? databaseServer.name}`,
 			label: this.browseConnectionMode ? `${databaseServer.name} (${CosmosDbMongoTreeDataProvider.CONTAINER_LABEL}, ${databaseServer.subscription.name})` : `${databaseServer.name}`,
 			iconPath: this._extensionContext.asAbsolutePath('resources/cosmosDb.svg'),
 			collapsibleState: TreeItemCollapsibleState.None,

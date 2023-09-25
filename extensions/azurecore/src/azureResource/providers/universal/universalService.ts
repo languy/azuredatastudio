@@ -115,8 +115,12 @@ export class AzureResourceUniversalService implements azureResource.IAzureResour
 	}
 
 	public getProviderFromResourceId(id: string): azureResource.IAzureResourceTreeDataProvider {
-		if (id.startsWith(AzureResourcePrefixes.cosmosdb)) {
+		if (id.startsWith(AzureResourcePrefixes.cosmosdbMongo)) {
 			return this.getRegisteredTreeDataProviderInstance(COSMOSDB_MONGO_PROVIDER_ID);
+		} else if (id.startsWith(AzureResourcePrefixes.cosmosdbPsql)) {
+			return this.getRegisteredTreeDataProviderInstance(COSMOSDB_POSTGRES_PROVIDER_ID);
+		} else if (id.startsWith(AzureResourcePrefixes.cosmosdbNoSql)) {
+			return this.getRegisteredTreeDataProviderInstance(COSMOSDB_NOSQL_PROVIDER_ID);
 		} else if (id.startsWith(AzureResourcePrefixes.database)) {
 			return this.getRegisteredTreeDataProviderInstance(DATABASE_PROVIDER_ID);
 		} else if (id.startsWith(AzureResourcePrefixes.databaseServer)) {

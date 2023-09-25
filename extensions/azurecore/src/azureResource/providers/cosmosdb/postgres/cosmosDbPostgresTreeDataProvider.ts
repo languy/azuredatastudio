@@ -28,7 +28,7 @@ export class CosmosDbPostgresTreeDataProvider extends ResourceTreeDataProviderBa
 
 	public getTreeItemForResource(databaseServer: AzureResourcePostgresDatabaseServer, account: azdata.Account): azdata.TreeItem {
 		return {
-			id: `${AzureResourcePrefixes.cosmosdb}${account.key.accountId}${databaseServer.tenant}${databaseServer.id ?? databaseServer.name}`,
+			id: `${AzureResourcePrefixes.cosmosdbPsql}${account.key.accountId}${databaseServer.tenant}${databaseServer.id ?? databaseServer.name}`,
 			label: this.browseConnectionMode ? `${databaseServer.name} ${CosmosDbPostgresTreeDataProvider.CONTAINER_LABEL}, ${databaseServer.subscription.name})` : databaseServer.name,
 			iconPath: this._extensionContext.asAbsolutePath('resources/cosmosDb.svg'),
 			collapsibleState: TreeItemCollapsibleState.None,

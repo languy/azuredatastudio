@@ -44,7 +44,9 @@ export enum AzureResourceServiceNames {
 
 export enum AzureResourcePrefixes {
 	logAnalytics = 'LogAnalytics_',
-	cosmosdb = 'Cosmosdb_',
+	cosmosdbMongo = 'CosmosdbMongo_',
+	cosmosdbPsql = 'CosmosdbPsql_',
+	cosmosdbNoSql = 'CosmosdbNoSql_',
 	database = 'database_',
 	databaseServer = 'databaseServer_',
 	kusto = 'Kusto_',

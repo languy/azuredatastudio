@@ -27,7 +27,7 @@ export class CosmosDbNoSqlTreeDataProvider extends ResourceTreeDataProviderBase<
 
 	public getTreeItemForResource(databaseServer: azureResource.AzureResourceDatabaseServer, account: azdata.Account): azdata.TreeItem {
 		return {
-			id: `${AzureResourcePrefixes.cosmosdb}${account.key.accountId}${databaseServer.id ?? databaseServer.name}`,
+			id: `${AzureResourcePrefixes.cosmosdbNoSql}${account.key.accountId}${databaseServer.id ?? databaseServer.name}`,
 			label: `${databaseServer.name} (CosmosDB NoSql API)`,
 			iconPath: {
 				dark: this._extensionContext.asAbsolutePath('resources/dark/cosmosdb_inverse.svg'),
