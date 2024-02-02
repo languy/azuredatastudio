@@ -634,6 +634,17 @@ export class TargetSelectionPage extends MigrationWizardPage {
 				},
 			})
 			.component();
+		const schemaMigrationInfoBox = this._view.modelBuilder.infoBox()
+			.withProps({
+				text: constants.SCHEMA_MIGRATION_INFORMATION_MESSAGE,
+				style: 'information',
+				width: WIZARD_INPUT_COMPONENT_WIDTH,
+				CSSStyles: { ...styles.BODY_CSS, 'margin': '5px 0 0 0' },
+				links: [
+					{ text: constants.DATABASE_SCHEMA_MIGRATION_PUBLIC_PREVIEW, url: 'https://techcommunity.microsoft.com/t5/microsoft-data-migration-blog/public-preview-schema-migration-for-target-azure-sql-db/ba-p/3990463' },
+					{ text: constants.MIN_IR_VERSION_SUPPORT_SCHEMA_MIGRATION, url: 'https://www.microsoft.com/en-my/download/details.aspx?id=39717' },
+				]
+			}).component();
 		this._azureResourceTable = this._createResourceTable();
 
 		return this._view.modelBuilder.flexContainer()
@@ -645,6 +656,7 @@ export class TargetSelectionPage extends MigrationWizardPage {
 				connectionContainer,
 				mapSourceHeading,
 				mapSourceDetails,
+				schemaMigrationInfoBox,
 				this._azureResourceTable])
 			.withLayout({ flexFlow: 'column' })
 			.withProps({ CSSStyles: { 'margin': '15px 0 0 0' } })

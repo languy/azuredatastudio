@@ -3000,6 +3000,15 @@
         </Str>
         <Disp Icon="Str" />
       </Item>
+      <Item ItemId=";src/sql/base/common/locConstants.reviewGuidanceLabel" ItemType="0" PsrId="308" InstFlg="true" Leaf="true">
+        <Str Cat="Text">
+          <Val><![CDATA[Before you report an issue here please <a href="https://github.com/microsoft/azuredatastudio/wiki/Submitting-Bugs-and-Suggestions" target="_blank">review the guidance we provide</a>.]]></Val>
+          <Tgt Cat="Text" Stat="Loc" Orig="New">
+            <Val><![CDATA[Prima di segnalare un problema qui, <a href="https://github.com/microsoft/azuredatastudio/wiki/Submitting-Bugs-and-Suggestions" target="_blank">rivedere le indicazioni fornite</a>.]]></Val>
+          </Tgt>
+        </Str>
+        <Disp Icon="Str" />
+      </Item>
       <Item ItemId=";src/sql/base/common/locConstants.scenarioTypeUndefined" ItemType="0" PsrId="308" Leaf="true">
         <Str Cat="Text">
           <Val><![CDATA[The scenario type for extension recommendations must be provided.]]></Val>
@@ -3251,6 +3260,15 @@
           <Val><![CDATA[Are you sure you want to remove '{0}'?]]></Val>
           <Tgt Cat="Text" Stat="Loc" Orig="New">
             <Val><![CDATA[Rimuovere '{0}'?]]></Val>
+          </Tgt>
+        </Str>
+        <Disp Icon="Str" />
+      </Item>
+      <Item ItemId=";src/sql/platform/accounts/common/accountActions.githubCopilotSignOut" ItemType="0" PsrId="308" Leaf="true">
+        <Str Cat="Text">
+          <Val><![CDATA[Sign out of GitHub Copilot]]></Val>
+          <Tgt Cat="Text" Stat="Loc" Orig="New">
+            <Val><![CDATA[Uscire da GitHub Copilot]]></Val>
           </Tgt>
         </Str>
         <Disp Icon="Str" />
@@ -8132,6 +8150,33 @@
           <Val><![CDATA[This cell contains the Unicode null character which is currently not supported for editing.]]></Val>
           <Tgt Cat="Text" Stat="Loc" Orig="New">
             <Val><![CDATA[La cella contiene il carattere Unicode Null che non è attualmente supportato per la modifica.]]></Val>
+          </Tgt>
+        </Str>
+        <Disp Icon="Str" />
+      </Item>
+      <Item ItemId=";src/sql/workbench/contrib/editData/browser/editDataGridPanel.editData.generalSubmitError" ItemType="0" PsrId="308" Leaf="true">
+        <Str Cat="Text">
+          <Val><![CDATA[An error occurred while submitting cell change: <{0}>]]></Val>
+          <Tgt Cat="Text" Stat="Loc" Orig="New">
+            <Val><![CDATA[Si è verificato un errore durante l'invio della modifica della cella: <{0}>]]></Val>
+          </Tgt>
+        </Str>
+        <Disp Icon="Str" />
+      </Item>
+      <Item ItemId=";src/sql/workbench/contrib/editData/browser/editDataGridPanel.editData.newRowSubmitError" ItemType="0" PsrId="308" Leaf="true">
+        <Str Cat="Text">
+          <Val><![CDATA[An error occurred while submitting data to new row: <{0}>]]></Val>
+          <Tgt Cat="Text" Stat="Loc" Orig="New">
+            <Val><![CDATA[Si è verificato un errore durante l'invio dei dati alla nuova riga: <{0}>]]></Val>
+          </Tgt>
+        </Str>
+        <Disp Icon="Str" />
+      </Item>
+      <Item ItemId=";src/sql/workbench/contrib/editData/browser/editDataGridPanel.editData.saveViewSubmitError" ItemType="0" PsrId="308" Leaf="true">
+        <Str Cat="Text">
+          <Val><![CDATA[An error occurred while saving local uncommitted changes: <{0}>]]></Val>
+          <Tgt Cat="Text" Stat="Loc" Orig="New">
+            <Val><![CDATA[Si è verificato un errore durante il salvataggio delle modifiche locali di cui non si è eseguito il commit: <{0}>]]></Val>
           </Tgt>
         </Str>
         <Disp Icon="Str" />

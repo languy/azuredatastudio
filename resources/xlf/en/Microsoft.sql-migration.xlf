@@ -46,6 +46,9 @@
     <trans-unit id="sql.migration.cutover.step.3.network.share">
       <source xml:lang="en">3. Verify that all log backups have been restored on the target database. The &quot;Log backups pending restore&quot; value should be zero.</source>
     </trans-unit>
+    <trans-unit id="sql.schema.migration.min.version">
+      <source xml:lang="en">5.37.8767.4</source>
+    </trans-unit>
     <trans-unit id="sql.migration.bc.info">
       <source xml:lang="en">A SQL Managed Instance migration cutover to the Business Critical service tier can take significantly longer than General Purpose because three secondary replicas have to be seeded for Always On High Availability group. The duration of the operation depends on the size of the data. Seeding speed in 90% of cases is 220 GB/hour or higher.</source>
     </trans-unit>
@@ -107,7 +110,7 @@
       <source xml:lang="en">All of tables below are empty. No table is available to select for data migration. But if they do not exist on target, schema migration is available.</source>
     </trans-unit>
     <trans-unit id="sql.migration.missing.tables.heading">
-      <source xml:lang="en">All of tables below are missing on target. To migrate the data in these tables select the migrate schema option above.</source>
+      <source xml:lang="en">All of tables below are missing on target. To migrate the data in these tables, select the migrate schema option above.</source>
     </trans-unit>
     <trans-unit id="sql.migration.multi.step.all.steps.completed.errors">
       <source xml:lang="en">All steps completed with the following error(s):{0}{1}</source>
@@ -947,7 +950,7 @@
       <source xml:lang="en">Ensure that the service account running the source SQL Server instance has read privileges on the network share.</source>
     </trans-unit>
     <trans-unit id="sql.migration.database.schema.migration.help">
-      <source xml:lang="en">Ensure to migrate the database schema from source to target before starting the migration by using the Database Schema Migration feature (Public Preview) or {0} or the {1} in Azure Data Studio before selecting the list of tables to migrate.</source>
+      <source xml:lang="en">Ensure to migrate the database schema from source to target before starting the migration by using the Database Schema Migration feature ({0}) or {1} or the {2} in Azure Data Studio before selecting the list of tables to migrate.</source>
     </trans-unit>
     <trans-unit id="sql.login.migration.aad.domain.name.input.box.placeholder">
       <source xml:lang="en">Enter AAD Domain Name</source>
@@ -1258,6 +1261,9 @@
     <trans-unit id="sql.migration.instance">
       <source xml:lang="en">Instance</source>
     </trans-unit>
+    <trans-unit id="sql.migration.different.ir.version.error">
+      <source xml:lang="en">Integration Runtime versions [{0}] are not the same. Please have the same version of Integration Runtime across all nodes for consistency and optimal performance.</source>
+    </trans-unit>
     <trans-unit id="sql.migration.validate.ir.validation.result.label.shir">
       <source xml:lang="en">Integration runtime connectivity</source>
     </trans-unit>
@@ -1338,9 +1344,6 @@
     </trans-unit>
     <trans-unit id="sql.migration.learn.more.prerequisites">
       <source xml:lang="en">Learn more about things you need before starting a migration.</source>
-    </trans-unit>
-    <trans-unit id="sql.migration.wizard.troubleshooting">
-      <source xml:lang="en">Learn more: https://aka.ms/dms-migrations-troubleshooting.</source>
     </trans-unit>
     <trans-unit id="sql.migration.wizard.account.add.button.label">
       <source xml:lang="en">Link account</source>
@@ -1553,7 +1556,7 @@
       <source xml:lang="en">Missing on target ({0})</source>
     </trans-unit>
     <trans-unit id="sql.migration.schema.partial.missing">
-      <source xml:lang="en">Missing schemas on the target. Some tables are disabled and cannot be migrated unless this option is selected.</source>
+      <source xml:lang="en">Missing schemas on the target. Some tables are disabled and cannot be migrated unless this option is selected. No tables selected will migrate missing schema only.</source>
     </trans-unit>
     <trans-unit id="sql.migration.mode">
       <source xml:lang="en">Mode</source>
@@ -1688,7 +1691,7 @@
       <source xml:lang="en">No resource groups found.</source>
     </trans-unit>
     <trans-unit id="sql.migration.schema.full.missing">
-      <source xml:lang="en">No schema was found on target. This option must be selected to migrate this database.</source>
+      <source xml:lang="en">No schema was found on target. This option must be selected to migrate this database. No tables selected will migrate missing schema only.</source>
     </trans-unit>
     <trans-unit id="sql.migration.no.storageAccount.found">
       <source xml:lang="en">No storage accounts found.</source>
@@ -1858,6 +1861,9 @@
     <trans-unit id="sql.migration.network.share.help.text">
       <source xml:lang="en">Provide the network share location where the backups are stored, and the user credentials used to access the share.</source>
     </trans-unit>
+    <trans-unit id="sql.migration.database.schema.migration.public.preview">
+      <source xml:lang="en">Public Preview</source>
+    </trans-unit>
     <trans-unit id="sql.migration.restore.backupset.status.queued">
       <source xml:lang="en">Queued</source>
     </trans-unit>
@@ -1866,6 +1872,9 @@
     </trans-unit>
     <trans-unit id="sql.migration.field.label.queued.files">
       <source xml:lang="en">Queued files</source>
+    </trans-unit>
+    <trans-unit id="sql.migration.schema.raiserror">
+      <source xml:lang="en">RAISERROR</source>
     </trans-unit>
     <trans-unit id="sql.migration.sku.recommended.configuration.summary.label.caps">
       <source xml:lang="en">RECOMMENDED CONFIGURATION</source>
@@ -2125,6 +2134,15 @@
     <trans-unit id="sql.migration.schema.migration.header">
       <source xml:lang="en">Schema migration</source>
     </trans-unit>
+    <trans-unit id="sql.schema.migration.information">
+      <source xml:lang="en">Schema migration is in {0} in Step 6. It requires an Integration Runtime version of [{1}] or higher. Schema deployment will make a best effort to deploy database objects. Schema deployment errors will not prevent data migration.</source>
+    </trans-unit>
+    <trans-unit id="sql.schema.migration.windows.auth.error">
+      <source xml:lang="en">Schema migration is not currently supported for connectivity to source instance using Windows Authentication. Please use SQL Authentication to enable schema migration support.</source>
+    </trans-unit>
+    <trans-unit id="sql.schema.migration.update.ir.version.error">
+      <source xml:lang="en">Schema migration requires an Integration Runtime version of [{0}] or higher. The current node version(s) are: [{1}]. Please install a newer version of the Integration Runtime to enable schema migration support.</source>
+    </trans-unit>
     <trans-unit id="sql.migration.schema.status">
       <source xml:lang="en">Schema migration status</source>
     </trans-unit>
@@ -2166,6 +2184,9 @@
     </trans-unit>
     <trans-unit id="sql.migration.restore.status.searching.backups">
       <source xml:lang="en">Searching backups</source>
+    </trans-unit>
+    <trans-unit id="sql.migration.wizard.troubleshooting">
+      <source xml:lang="en">See link for more troubleshooting steps: https://aka.ms/dms-migrations-troubleshooting.</source>
     </trans-unit>
     <trans-unit id="sql.migration.select">
       <source xml:lang="en">Select</source>

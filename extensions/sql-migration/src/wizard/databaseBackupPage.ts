@@ -6,7 +6,7 @@
 import * as azdata from 'azdata';
 import * as vscode from 'vscode';
 import { EOL } from 'os';
-import { getStorageAccountAccessKeys, SqlVMServer } from '../api/azure';
+import { getIrNodes, getResourceName, getStorageAccountAccessKeys, SqlVMServer } from '../api/azure';
 import { MigrationWizardPage } from '../models/migrationWizardPage';
 import { MigrationMode, MigrationSourceAuthenticationType, MigrationStateModel, NetworkContainerType, NetworkShare, StateChangeEvent, ValidateIrState, ValidationResult } from '../models/stateMachine';
 import * as constants from '../constants/strings';
@@ -18,7 +18,7 @@ import { logError, TelemetryViews } from '../telemetry';
 import * as styles from '../constants/styles';
 import { TableMigrationSelectionDialog } from '../dialog/tableMigrationSelection/tableMigrationSelectionDialog';
 import { ValidateIrDialog } from '../dialog/validationResults/validateIrDialog';
-import { canTargetConnectToStorageAccount, getSourceConnectionCredentials, getSourceConnectionProfile, getSourceConnectionQueryProvider, getSourceConnectionUri } from '../api/sqlUtils';
+import { areVersionsSame, canTargetConnectToStorageAccount, getActiveIrVersions, getActiveIrVersionsNotSupportingSchemaMigration, getActiveIrVersionsSupportingSchemaMigration, getSourceConnectionCredentials, getSourceConnectionProfile, getSourceConnectionQueryProvider, getSourceConnectionUri, SchemaMigrationRequiredIntegrationRuntimeMinimumVersion, TargetDatabaseInfo } from '../api/sqlUtils';
 import { SchemaMigrationAssessmentDialog } from '../dialog/tableMigrationSelection/schemaMigrationAssessmentDialog';
 
 const WIZARD_TABLE_COLUMN_WIDTH = '200px';
@@ -81,6 +81,7 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 	private _refreshButton!: azdata.ButtonComponent;
 	private _databaseTable!: azdata.TableComponent;
 	private _migrationTableSection!: azdata.FlexContainer;
+	private _sqlDbWarnings: string[] = [];
 
 	constructor(wizard: azdata.window.Wizard, migrationStateModel: MigrationStateModel) {
 		super(wizard, azdata.window.createWizardPage(constants.DATA_SOURCE_CONFIGURATION_PAGE_TITLE), migrationStateModel);
@@ -849,16 +850,29 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 		});
 
 		this.wizard.customButtons[VALIDATE_IR_CUSTOM_BUTTON_INDEX].hidden = !this.migrationStateModel.isIrMigration;
+		if (this.migrationStateModel._targetType === MigrationTargetType.SQLDB && !this.migrationStateModel.refreshDatabaseBackupPage) {
+			await this._validateIrVersions();
+		}
 		await this._updatePageControlsVisibility();
 
 		if (this.migrationStateModel.refreshDatabaseBackupPage) {
-			const isSqlDbTarget = this.migrationStateModel.isSqlDbTarget;
-			if (isSqlDbTarget) {
-				this.wizardPage.title = constants.DATABASE_TABLE_SELECTION_LABEL;
-				this.wizardPage.description = constants.DATABASE_TABLE_SELECTION_LABEL;
-				await this._loadTableData();
-			}
 			try {
+				const isSqlDbTarget = this.migrationStateModel.isSqlDbTarget;
+				const connectionProfile = await getSourceConnectionProfile();
+				this.migrationStateModel._authenticationType =
+					connectionProfile.authenticationType === azdata.connection.AuthenticationType.SqlLogin
+						? MigrationSourceAuthenticationType.Sql
+						: connectionProfile.authenticationType === azdata.connection.AuthenticationType.Integrated
+							? MigrationSourceAuthenticationType.Integrated
+							: undefined!;
+
+				if (isSqlDbTarget) {
+					this.wizardPage.title = constants.DATABASE_TABLE_SELECTION_LABEL;
+					this.wizardPage.description = constants.DATABASE_TABLE_SELECTION_LABEL;
+					await this._validateIrVersions();
+					await this._loadTableData();
+				}
+
 				const isOfflineMigration = this.migrationStateModel._databaseBackup?.migrationMode === MigrationMode.OFFLINE;
 
 				// for offline migrations, show last backup file column
@@ -883,7 +897,6 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 				}
 				this._blobContainerTargetDatabaseNamesTable.columns[folderColumnIndex].hidden = folderColumnNewHidden;
 
-				const connectionProfile = await getSourceConnectionProfile();
 				const queryProvider = await getSourceConnectionQueryProvider();
 				let username = '';
 				try {
@@ -895,12 +908,6 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 					username = connectionProfile.userName;
 				}
 
-				this.migrationStateModel._authenticationType =
-					connectionProfile.authenticationType === azdata.connection.AuthenticationType.SqlLogin
-						? MigrationSourceAuthenticationType.Sql
-						: connectionProfile.authenticationType === azdata.connection.AuthenticationType.Integrated
-							? MigrationSourceAuthenticationType.Integrated
-							: undefined!;
 				this._sourceHelpText.value = constants.SQL_SOURCE_DETAILS(
 					this.migrationStateModel._authenticationType,
 					connectionProfile.serverName,
@@ -1232,7 +1239,7 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 												level: azdata.window.MessageLevel.Warning,
 												text: constants.DATABASE_BACKUP_BLOB_FOLDER_STRUCTURE_WARNING,
 											};
-										} else {
+										} else if (this._sqlDbWarnings.length === 0) {
 											this.wizard.message = {
 												text: ''
 											};
@@ -1324,7 +1331,10 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 	}
 
 	private async _validateIr(): Promise<void> {
-		this.wizard.message = { text: '' };
+		if (this._sqlDbWarnings.length === 0) {
+			this.wizard.message = { text: '' };
+		}
+
 		const dialog = new ValidateIrDialog(
 			this.migrationStateModel,
 			() => this.updateValidationResultUI());
@@ -1699,6 +1709,7 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 				width: WIZARD_INPUT_COMPONENT_WIDTH,
 				CSSStyles: { ...styles.BODY_CSS, 'margin': '5px 0 0 0' },
 				links: [
+					{ text: constants.DATABASE_SCHEMA_MIGRATION_PUBLIC_PREVIEW, url: 'https://techcommunity.microsoft.com/t5/microsoft-data-migration-blog/public-preview-schema-migration-for-target-azure-sql-db/ba-p/3990463' },
 					{ text: constants.DATABASE_SCHEMA_MIGRATION_DACPAC_EXTENSION, url: 'https://learn.microsoft.com/sql/azure-data-studio/extensions/sql-server-dacpac-extension' },
 					{ text: constants.DATABASE_SCHEMA_MIGRATION_PROJECTS_EXTENSION, url: 'https://learn.microsoft.com/sql/azure-data-studio/extensions/sql-database-project-extension' },
 				]
@@ -1717,7 +1728,10 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 			.component();
 		this._disposables.push(
 			this._refreshButton.onDidClick(
-				async e => await this._loadTableData()));
+				async e => {
+					await this._validateIrVersions();
+					await this._loadTableData();
+				}));
 
 		this._refreshLoading = this._view.modelBuilder.loadingComponent()
 			.withItem(this._refreshButton)
@@ -1834,9 +1848,12 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 
 	private async _loadTableData(): Promise<void> {
 		this._refreshLoading.loading = true;
-		this.wizard.message = { text: '' };
 		const data: any[][] = [];
+		if (this._sqlDbWarnings.length === 0) {
+			this.wizard.message = { text: '' };
+		}
 
+		// Get source target mapping table
 		this.migrationStateModel._sourceTargetMapping.forEach((targetDatabaseInfo, sourceDatabaseName) => {
 			if (sourceDatabaseName) {
 				const tableCount = targetDatabaseInfo?.sourceTables.size ?? 0;
@@ -1851,14 +1868,8 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 					sourceDatabaseName,
 					targetDatabaseInfo?.databaseName,
 					<azdata.HyperlinkColumnCellValue>{
-						icon: targetDatabaseInfo?.enableSchemaMigration
-							? this._hasSchemaMigraitonBlockerIssues(sourceDatabaseName) ? IconPathHelper.warning : IconPathHelper.completedMigration
-							: IconPathHelper.cancel,
-						title: targetDatabaseInfo?.enableSchemaMigration
-							? this._hasSchemaMigraitonBlockerIssues(sourceDatabaseName)
-								? "Assessment results"
-								: hasSelectedTables ? "" : 'Schema only'
-							: targetDatabaseInfo?.hasMissingTables ? "Not selected" : "Not needed",
+						icon: this._getSchemaMigrationColumnIcon(targetDatabaseInfo, sourceDatabaseName),
+						title: this._getSchemaMigrationColumnTitle(targetDatabaseInfo, sourceDatabaseName, hasSelectedTables),
 					},
 					<azdata.HyperlinkColumnCellValue>{				// table selection
 						icon: hasSelectedTables
@@ -1878,5 +1889,64 @@ export class DatabaseBackupPage extends MigrationWizardPage {
 	private _hasSchemaMigraitonBlockerIssues(sourceDatabaseName: string): boolean {
 		var assessmentResults = this.migrationStateModel._assessmentResults?.databaseAssessments?.find(r => r.name === sourceDatabaseName)?.issues?.filter(i => i.appliesToMigrationTargetPlatform === MigrationTargetType.SQLDB) ?? [];
 		return assessmentResults?.find(i => constants.SchemaMigrationFailedRulesLookup[i.ruleId] !== undefined) !== undefined;
+	}
+
+	private _getSchemaMigrationColumnIcon(targetDatabaseInfo: TargetDatabaseInfo | undefined, sourceDatabaseName: string): azdata.IconPath {
+		if (targetDatabaseInfo?.enableSchemaMigration) {
+			return this._hasSchemaMigraitonBlockerIssues(sourceDatabaseName) ? IconPathHelper.warning : IconPathHelper.completedMigration;
+		} else if (!targetDatabaseInfo?.isSchemaMigrationSupported) {
+			return IconPathHelper.warning;
+		} else {
+			return IconPathHelper.cancel;
+		}
+	}
+
+	private _getSchemaMigrationColumnTitle(targetDatabaseInfo: TargetDatabaseInfo | undefined, sourceDatabaseName: string, hasSelectedTables: boolean): azdata.IconPath {
+		if (targetDatabaseInfo?.enableSchemaMigration) {
+			return this._hasSchemaMigraitonBlockerIssues(sourceDatabaseName)
+				? "Assessment results"
+				: hasSelectedTables ? "" : 'Schema only'
+		} else if (!targetDatabaseInfo?.isSchemaMigrationSupported) {
+			return "Not supported";
+		} else {
+			return targetDatabaseInfo?.hasMissingTables ? "Not selected" : "Not needed";
+		}
+	}
+
+	private async _validateIrVersions(): Promise<void> {
+		this._sqlDbWarnings.length = 0;
+		// Check if schema migration is supported and if multiple IR nodes versions are different.
+		const irNodes = await getIrNodes(
+			this.migrationStateModel._azureAccount,
+			this.migrationStateModel._sqlMigrationServiceSubscription,
+			getResourceName(this.migrationStateModel._sqlMigrationServiceResourceGroup.id),
+			this.migrationStateModel._location.name,
+			this.migrationStateModel._sqlMigrationService!.name);
+		const irVersions = getActiveIrVersions(irNodes);
+		const irVersionsSupportingSchemaMigration = getActiveIrVersionsSupportingSchemaMigration(irNodes);
+		this.migrationStateModel.isSchemaMigrationSupported = irVersionsSupportingSchemaMigration.length > 0;
+
+		// Check if current IR node(s) support schema migration is supported
+		if (!this.migrationStateModel.isSchemaMigrationSupported) {
+			const irVersionsNotSupportingSchemaMigration = getActiveIrVersionsNotSupportingSchemaMigration(irNodes);
+			this._sqlDbWarnings.push(constants.SCHEMA_MIGRATION_UPDATE_IR_VERSION_ERROR_MESSAGE(SchemaMigrationRequiredIntegrationRuntimeMinimumVersion, irVersionsNotSupportingSchemaMigration));
+		}
+
+		// Check if multiple IR nodes have different versions.
+		if (!areVersionsSame(irVersions)) {
+			this._sqlDbWarnings.push(constants.SQLDB_MIGRATION_DIFFERENT_IR_VERSION_ERROR_MESSAGE(irVersions));
+		}
+
+		if (this._sqlDbWarnings.length > 0) {
+			this.wizard.message = {
+				text: this._sqlDbWarnings.join(EOL),
+				level: azdata.window.MessageLevel.Warning
+			};
+		} else {
+			this.wizard.message = {
+				text: '',
+				level: azdata.window.MessageLevel.Information
+			}
+		}
 	}
 }

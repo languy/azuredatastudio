@@ -533,6 +533,10 @@ export async function getSqlMigrationServiceMonitoringData(account: azdata.Accou
 	return response.response!.data;
 }
 
+export async function getIrNodes(account: azdata.Account, subscription: Subscription, resourceGroupName: string, regionName: string, sqlMigrationService: string): Promise<IntegrationRuntimeNode[]> {
+	return (await getSqlMigrationServiceMonitoringData(account, subscription, resourceGroupName, regionName, sqlMigrationService)).nodes;
+}
+
 export async function startDatabaseMigration(
 	account: azdata.Account,
 	subscription: Subscription,
@@ -855,7 +859,7 @@ export function getBlobContainerId(resourceGroupId: string, storageAccountName: 
 }
 
 export function getMigrationErrors(migration: DatabaseMigration): string {
-	const errors = [];
+	var errors = [];
 
 	if (migration?.properties) {
 		errors.push(migration.properties.provisioningError);
@@ -867,13 +871,20 @@ export function getMigrationErrors(migration: DatabaseMigration): string {
 		errors.push(migration.properties.migrationStatusWarnings?.completeRestoreErrorMessage);
 		errors.push(migration.properties.migrationStatusWarnings?.restoreBlockingReason);
 		errors.push(...migration.properties.migrationStatusDetails?.listOfCopyProgressDetails?.flatMap(cp => cp.errors) ?? []);
-		errors.push(...migration.properties.migrationStatusDetails?.sqlSchemaMigrationStatus?.sqlSchemaCopyErrors ?? []);
+		errors.push(...migration.properties.migrationStatusDetails?.sqlSchemaMigrationStatus?.errors ?? []);
 	}
 
 	// remove undefined and duplicate error entries
-	return errors
+	var combinedError = errors
 		.filter((e, i, arr) => e !== undefined && i === arr.indexOf(e))
 		.join(EOL);
+
+	// add troubleshooting link if there are any errors
+	if (combinedError !== undefined && combinedError !== "") {
+		combinedError = combinedError.concat(constants.SQL_MIGRATION_TROUBLESHOOTING_LINK);
+	}
+
+	return combinedError;
 }
 
 export interface SqlMigrationServiceProperties {
@@ -919,7 +930,9 @@ export interface IntegrationRuntimeNode {
 	cpuUtilization: number,
 	nodeName: string
 	receivedBytes: number
-	sentBytes: number
+	sentBytes: number,
+	status: string,
+	version: string
 }
 
 export interface StartDatabaseMigrationRequest {
@@ -1149,7 +1162,7 @@ export interface CopyProgressDetail {
 }
 
 export interface SqlSchemaMigrationStatus {
-	sqlSchemaCopyErrors: string[];
+	errors: string[];
 	status: 'CollectionCompleted' | 'PrefetchObjects' | 'GetDependency' | 'ScriptObjects' | 'ScriptViewIndexes' | 'ScriptOwnership' | 'GeneratingScript' | 'GeneratingScriptCompleted' | 'DeployingSchema' | 'DeploymentCompleted' | 'Completed' | 'CompletedWithError';
 	objectsCollection: ObjectsCollection;
 	scriptGeneration: ScriptGeneration;
