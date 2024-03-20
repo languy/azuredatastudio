@@ -45,7 +45,8 @@ export class SqlMigrationService extends MigrationExtensionService implements co
 		contracts.MigrateLoginsRequest.type,
 		contracts.EstablishUserMappingRequest.type,
 		contracts.MigrateServerRolesAndSetPermissionsRequest.type,
-		contracts.TdeMigrateRequest.type
+		contracts.TdeMigrateRequest.type,
+		contracts.GetSqlMigrationGenerateArmTemplateRequest.type
 	];
 
 	constructor(client: SqlOpsDataClient) {
@@ -75,13 +76,25 @@ export class SqlMigrationService extends MigrationExtensionService implements co
 		// this isn't explicitly necessary
 	}
 
-	async getAssessments(connectionString: string, databases: string[], xEventsFilesFolderPath: string): Promise<contracts.AssessmentResult | undefined> {
-		let params: contracts.SqlMigrationAssessmentParams = { connectionString: connectionString, databases: databases, xEventsFilesFolderPath: xEventsFilesFolderPath };
+	async getAssessments(connectionString: string, databases: string[], xEventsFilesFolderPath: string, collectAdhocQueries: boolean): Promise<contracts.AssessmentResult | undefined> {
+		let params: contracts.SqlMigrationAssessmentParams = { connectionString: connectionString, databases: databases, xEventsFilesFolderPath: xEventsFilesFolderPath, collectAdhocQueries: collectAdhocQueries };
 		try {
 			return this._client.sendRequest(contracts.GetSqlMigrationAssessmentItemsRequest.type, params);
 		}
 		catch (e) {
 			this._client.logFailedRequest(contracts.GetSqlMigrationAssessmentItemsRequest.type, e);
+		}
+
+		return undefined;
+	}
+
+	async getArmTemplate(skuRecommendationReportFilePath: string): Promise<string | undefined> {
+		try {
+			const response = this._client.sendRequest(contracts.GetSqlMigrationGenerateArmTemplateRequest.type, skuRecommendationReportFilePath);
+			return response;
+		}
+		catch (e) {
+			this._client.logFailedRequest(contracts.GetSqlMigrationGenerateArmTemplateRequest.type, e);
 		}
 
 		return undefined;

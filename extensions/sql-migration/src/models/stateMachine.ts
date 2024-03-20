@@ -155,6 +155,7 @@ export interface SavedInfo {
 	serviceResourceGroup: azurecore.azureResource.AzureResourceResourceGroup | null;
 	serverAssessment: ServerAssessment | null;
 	xEventsFilesFolderPath: string | null;
+	collectAdhocQueries: boolean | null;
 	skuRecommendation: SkuRecommendationSavedInfo | null;
 }
 
@@ -193,8 +194,10 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 	public _vmInstanceView!: VirtualMachineInstanceView;
 	public _databaseBackup!: DatabaseBackupModel;
 	public _storageAccounts!: StorageAccount[];
+	public _storageAccount!: azurecore.azureResource.AzureGraphResource;
 	public _fileShares!: azurecore.azureResource.FileShare[];
 	public _blobContainers!: azurecore.azureResource.BlobContainer[];
+	public _blobContainer!: azurecore.azureResource.BlobContainer;
 	public _lastFileNames!: azurecore.azureResource.Blob[];
 	public _blobContainerFolders!: string[];
 	public _sourceDatabaseNames!: string[];
@@ -214,6 +217,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 
 	public _databasesForAssessment!: string[];
 	public _xEventsFilesFolderPath: string = '';
+	public _collectAdhocQueries: boolean = false;
 	public _assessmentResults!: ServerAssessment;
 	public _assessedDatabaseList!: string[];
 	public _runAssessments: boolean = true;
@@ -240,6 +244,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 	private _skuRecommendationApiResponse!: contracts.SkuRecommendationResult;
 	public _skuRecommendationReportFilePaths: string[];
 	public _skuRecommendationPerformanceLocation!: string;
+	public _armTemplateResult!: ArmTemplate;
 
 	public _perfDataCollectionStartDate!: Date | undefined;
 	public _perfDataCollectionStopDate!: Date | undefined;
@@ -408,7 +413,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 	public async getDatabaseAssessments(targetType: MigrationTargetType[]): Promise<ServerAssessment> {
 		const connectionString = await getSourceConnectionString();
 		try {
-			const response = (await this.migrationService.getAssessments(connectionString, this._databasesForAssessment, this._xEventsFilesFolderPath ?? ''))!;
+			const response = (await this.migrationService.getAssessments(connectionString, this._databasesForAssessment, this._xEventsFilesFolderPath ?? '', this._collectAdhocQueries ?? false))!;
 			this._assessmentApiResponse = response;
 			this._assessedDatabaseList = this._databasesForAssessment.slice();
 
@@ -467,6 +472,25 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 		this.generateAssessmentTelemetry().catch(e => console.error(e));
 		return this._assessmentResults;
 	}
+
+	public async getArmTemplate(skuRecommendationReportFilePath: string): Promise<ArmTemplate> {
+		try {
+			const response = (await this.migrationService.getArmTemplate(skuRecommendationReportFilePath))!
+			if (response) {
+				this._armTemplateResult = {
+					template: response
+				};
+			}
+		}
+		catch (error) {
+			logError(TelemetryViews.ProvisioningScriptWizard, 'GenerateProvisioningScriptFailed', error);
+			this._armTemplateResult = {
+				generateTemplateError: error
+			};
+		}
+		return this._armTemplateResult;
+	}
+
 
 	public async getSkuRecommendations(): Promise<SkuRecommendation> {
 		try {
@@ -1276,6 +1300,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 			sqlMigrationService: undefined,
 			serverAssessment: null,
 			xEventsFilesFolderPath: null,
+			collectAdhocQueries: null,
 			skuRecommendation: null,
 			serviceResourceGroup: null,
 			serviceSubscription: null,
@@ -1374,6 +1399,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 			this._assessedDatabaseList = this.savedInfo.databaseAssessment ?? [];
 			this._databasesForAssessment = this.savedInfo.databaseAssessment ?? [];
 			this._xEventsFilesFolderPath = this.savedInfo.xEventsFilesFolderPath ?? '';
+			this._collectAdhocQueries = this.savedInfo.collectAdhocQueries ?? false;
 			const savedAssessmentResults = this.savedInfo.serverAssessment;
 			if (savedAssessmentResults) {
 				this._assessmentResults = savedAssessmentResults;
@@ -1470,6 +1496,11 @@ export interface ServerAssessment {
 export interface SkuRecommendation {
 	recommendations?: contracts.SkuRecommendationResult;
 	recommendationError?: Error;
+}
+
+export interface ArmTemplate {
+	template?: string;
+	generateTemplateError?: Error;
 }
 
 export interface OperationResult<T> {

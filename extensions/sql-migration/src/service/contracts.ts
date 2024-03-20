@@ -14,6 +14,7 @@ export interface SqlMigrationAssessmentParams {
 	connectionString: string;
 	databases: string[];
 	xEventsFilesFolderPath: string;
+	collectAdhocQueries: boolean;
 }
 
 export interface SqlMigrationImpactedObjectInfo {
@@ -103,6 +104,10 @@ export interface AssessmentResult {
 
 export namespace GetSqlMigrationAssessmentItemsRequest {
 	export const type = new RequestType<SqlMigrationAssessmentParams, AssessmentResult, void, void>('migration/getassessments');
+}
+
+export namespace GetSqlMigrationGenerateArmTemplateRequest {
+	export const type = new RequestType<string, string, void, void>('migration/getarmtemplate');
 }
 
 export interface SqlMigrationSkuRecommendationsParams {
@@ -535,11 +540,12 @@ export namespace LoginMigrationNotification {
 
 export interface ISqlMigrationService {
 	providerId: string;
-	getAssessments(ownerUri: string, databases: string[], xEventsFilesFolderPath: string): Thenable<AssessmentResult | undefined>;
+	getAssessments(ownerUri: string, databases: string[], xEventsFilesFolderPath: string, collectAdhocQueries: boolean): Thenable<AssessmentResult | undefined>;
 	getSkuRecommendations(dataFolder: string, perfQueryIntervalInSec: number, targetPlatforms: string[], targetSqlInstance: string, targetPercentile: number, scalingFactor: number, startTime: string, endTime: string, includePreviewSkus: boolean, databaseAllowList: string[]): Promise<SkuRecommendationResult | undefined>;
 	startPerfDataCollection(ownerUri: string, dataFolder: string, perfQueryIntervalInSec: number, staticQueryIntervalInSec: number, numberOfIterations: number): Promise<StartPerfDataCollectionResult | undefined>;
 	stopPerfDataCollection(): Promise<StopPerfDataCollectionResult | undefined>;
 	refreshPerfDataCollection(lastRefreshedTime: Date): Promise<RefreshPerfDataCollectionResult | undefined>;
+	getArmTemplate(targetType: string): Promise<string | undefined>;
 	startLoginMigration(sourceConnectionString: string, targetConnectionString: string, loginList: string[], aadDomainName: string): Promise<StartLoginMigrationResult | undefined>;
 	validateLoginMigration(sourceConnectionString: string, targetConnectionString: string, loginList: string[], aadDomainName: string): Promise<StartLoginMigrationResult | undefined>;
 	validateSysAdminPermission(sourceConnectionString: string, targetConnectionString: string, loginList: string[], aadDomainName: string): Promise<StartLoginMigrationPreValidationResult | undefined>;
