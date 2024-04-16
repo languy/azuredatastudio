@@ -88,7 +88,7 @@ export class SqlMigrationService extends MigrationExtensionService implements co
 		return undefined;
 	}
 
-	async getArmTemplate(skuRecommendationReportFilePath: string): Promise<string | undefined> {
+	async getArmTemplate(skuRecommendationReportFilePath: string): Promise<string[] | undefined> {
 		try {
 			const response = this._client.sendRequest(contracts.GetSqlMigrationGenerateArmTemplateRequest.type, skuRecommendationReportFilePath);
 			return response;
@@ -123,6 +123,7 @@ export class SqlMigrationService extends MigrationExtensionService implements co
 			includePreviewSkus: includePreviewSkus,
 			databaseAllowList: databaseAllowList,
 			isPremiumSSDV2Enabled: true,
+			isNextGenGPEnabled: includePreviewSkus
 		};
 
 		try {

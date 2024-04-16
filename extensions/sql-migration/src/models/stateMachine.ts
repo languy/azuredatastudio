@@ -312,7 +312,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 
 		this._skuScalingFactor = 100;
 		this._skuTargetPercentile = 95;
-		this._skuEnablePreview = false;
+		this._skuEnablePreview = true;
 		this._skuEnableElastic = false;
 		this._loginMigrationModel = new LoginMigrationModel();
 	}
@@ -478,7 +478,7 @@ export class MigrationStateModel implements Model, vscode.Disposable {
 			const response = (await this.migrationService.getArmTemplate(skuRecommendationReportFilePath))!
 			if (response) {
 				this._armTemplateResult = {
-					template: response
+					templates: response
 				};
 			}
 		}
@@ -1499,7 +1499,7 @@ export interface SkuRecommendation {
 }
 
 export interface ArmTemplate {
-	template?: string;
+	templates?: string[];
 	generateTemplateError?: Error;
 }
 

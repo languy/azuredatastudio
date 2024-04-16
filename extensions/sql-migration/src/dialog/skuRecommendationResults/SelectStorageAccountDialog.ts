@@ -6,7 +6,6 @@
 import * as azdata from 'azdata';
 import * as vscode from 'vscode';
 import * as azurecore from 'azurecore';
-import { MigrationServiceContext } from '../../models/migrationLocalStorage';
 import * as styles from '../../constants/styles';
 import * as constants from '../../constants/strings';
 import * as utils from '../../api/utils';
@@ -42,7 +41,6 @@ export class SelectStorageAccountDialog {
 	private _dialog: azdata.window.Dialog;
 	private _view!: azdata.ModelView;
 	private _disposables: vscode.Disposable[] = [];
-	private _serviceContext!: MigrationServiceContext;
 	private _azureAccounts!: azdata.Account[];
 	private _accountTenants!: azurecore.Tenant[];
 	private _azureTenant!: azurecore.Tenant;
@@ -278,7 +276,7 @@ export class SelectStorageAccountDialog {
 						? utils.deepClone(selectedLocation)!
 						: undefined!;
 				} else {
-					this.migrationStateModel._location = undefined!;
+					this._location = undefined!;
 				}
 
 				await utils.clearDropDown(this._azureResourceGroupDropdown);
@@ -340,8 +338,6 @@ export class SelectStorageAccountDialog {
 					this._storageAccount = (selectedStorageAccount)
 						? utils.deepClone(selectedStorageAccount)!
 						: undefined!;
-				} else {
-					this._serviceContext.migrationService = undefined;
 				}
 				await utils.clearDropDown(this._blobContainerDropdown);
 				await this._populateBlobContainer();
@@ -364,6 +360,16 @@ export class SelectStorageAccountDialog {
 				placeholder: constants.SELECT_BLOB_CONTAINER,
 				CSSStyles: { ...DROPDOWN_CSS },
 			}).component();
+
+		this._disposables.push(
+			this._blobContainerDropdown.onValueChanged(async (value) => {
+				if (value && value !== undefined) {
+					const selectedBlobContainer = this._blobContainers?.find(rg => rg.name === (<azdata.CategoryValue>this._blobContainerDropdown.value)?.displayName);
+					this._blobContainer = (selectedBlobContainer)
+						? utils.deepClone(selectedBlobContainer)!
+						: undefined!;
+				}
+			}));
 
 		return this._view.modelBuilder.flexContainer()
 			.withItems([
@@ -581,31 +587,30 @@ export class SelectStorageAccountDialog {
 		const storageKeys = await getStorageAccountAccessKeys(this._azureAccount, this._targetSubscription, this._storageAccount);
 		const accountName = this._storageAccount.name;
 		const containerName = this._blobContainer.name;
-		const blobName = utils.generateTemplatePath(this.migrationStateModel, this._targetType);
-
+		const templates = this.migrationStateModel._armTemplateResult.templates!;
 		const sharedKeyCredential = new StorageSharedKeyCredential(this._storageAccount.name, storageKeys.keyName1);
 
 		const sasToken = generateBlobSASQueryParameters({
 			containerName,
-			blobName,
 			permissions: BlobSASPermissions.parse("racwd"),
 			expiresOn: new Date(new Date().valueOf() + 86400),
 		},
 			sharedKeyCredential
 		).toString();
 
-		const sasUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
 		try {
-			const blockBlobClient = new BlockBlobClient(sasUrl);
-			const template = this.migrationStateModel._armTemplateResult.template!;
-			if (template) {
-				await blockBlobClient.upload(template, template.length);
-				void vscode.window.showInformationMessage(constants.UPLOAD_TEMPLATE_SUCCESS);
+			for (let i = 0; i < templates.length; i++) {
+				const blobName = utils.generateTemplatePath(this.migrationStateModel, this._targetType, i + 1);
+				const sasUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
+				const blockBlobClient = new BlockBlobClient(sasUrl);
+				await blockBlobClient.upload(templates[i], templates[i].length);
 			}
+			void vscode.window.showInformationMessage(constants.UPLOAD_TEMPLATE_SUCCESS);
 		}
 		catch (e) {
 			logError(TelemetryViews.UploadArmTemplateDialog, 'ArmTemplateUploadError', e);
 			void vscode.window.showErrorMessage(constants.UPLOAD_TEMPLATE_FAIL);
 		}
+
 	}
 }

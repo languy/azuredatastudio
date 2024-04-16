@@ -1582,8 +1582,10 @@ export async function getRecommendedConfiguration(targetType: MigrationTargetTyp
 			}
 			else {
 				const serviceTier = recommendation.targetSku.category?.sqlServiceTier === contracts.AzureSqlPaaSServiceTier.GeneralPurpose
-					? constants.GENERAL_PURPOSE
-					: constants.BUSINESS_CRITICAL;
+					? constants.GENERAL_PURPOSE :
+					recommendation.targetSku.category?.sqlServiceTier === contracts.AzureSqlPaaSServiceTier.NextGenGeneralPurpose ?
+						constants.NEXTGEN_GENERAL_PURPOSE
+						: constants.BUSINESS_CRITICAL;
 				const hardwareType = recommendation.targetSku.category?.hardwareType === contracts.AzureSqlPaaSHardwareType.Gen5
 					? constants.GEN5
 					: recommendation.targetSku.category?.hardwareType === contracts.AzureSqlPaaSHardwareType.PremiumSeries
@@ -1630,13 +1632,20 @@ export async function promptUserForFile(filters: { [name: string]: string[] }): 
 	return '';
 }
 
-export function generateTemplatePath(model: MigrationStateModel, targetType: MigrationTargetType): string {
+export function generateTemplatePath(model: MigrationStateModel, targetType: MigrationTargetType, batchNumber: number): string {
 	let date = new Date().toISOString().split('T')[0];
 	let time = new Date().toLocaleTimeString('it-IT');
+	let fileName;
 
 	// source instance same would be same across all recommendations MI/DB/VM.
 	let instanceName = model._skuRecommendationResults.recommendations?.sqlMiRecommendationResults[0].sqlInstanceName;
-	let fileName = `ARMTemplate-${targetType}-${instanceName}-${date}-${time}.json`;
+
+	if (model._armTemplateResult.templates?.length! > 1 && targetType === MigrationTargetType.SQLDB) {
+		fileName = `ARMTemplate-${targetType}-${instanceName}-${date}-${time}-batch${batchNumber}.json`;
+	}
+	else {
+		fileName = `ARMTemplate-${targetType}-${instanceName}-${date}-${time}.json`;
+	}
 
 	// replacing invalid characters for a file name.
 	fileName = fileName.replace(/[/\\?%*:|"<>]/g, '-');
