@@ -5,6 +5,7 @@
 
 import AdsTelemetryReporter, { TelemetryEventMeasures, TelemetryEventProperties } from '@microsoft/ads-extension-telemetry';
 import { MigrationStateModel } from './models/stateMachine';
+import * as constants from './constants/strings';
 const packageJson = require('../package.json');
 let packageInfo = {
 	name: packageJson.name,
@@ -17,6 +18,7 @@ export const TelemetryReporter = new AdsTelemetryReporter<TelemetryViews, Teleme
 export enum TelemetryViews {
 	SqlServerDashboard = 'SqlServerDashboard',
 	CreateDataMigrationServiceDialog = 'CreateDataMigrationServiceDialog',
+	DatabaseSelectorPage = 'DatabaseSelectorPage',
 	AssessmentsDialog = 'AssessmentsDialog',
 	DatabaseBackupPage = 'DatabaseBackupPage',
 	IntegrationRuntimePage = 'IntegrationRuntimePage',
@@ -43,6 +45,7 @@ export enum TelemetryViews {
 	LoginMigrationTargetSelectionPage = 'LoginMigrationTargetSelectionPage',
 	LoginMigrationSelectorPage = 'LoginMigrationSelectorPage',
 	LoginMigrationStatusPage = 'LoginMigrationStatusPage',
+	LoginMigrationPreValdationDialog = 'LoginMigrationPreValdationDialog',
 	TdeConfigurationDialog = 'TdeConfigurationDialog',
 	TdeMigrationDialog = 'TdeMigrationDialog',
 	ValidIrDialog = 'validIrDialog',
@@ -81,6 +84,9 @@ export enum TelemetryAction {
 	LoginMigrationStarted = 'LoginMigrationStarted',
 	LoginMigrationCompleted = 'LoginMigrationCompleted',
 	LoginMigrationError = 'LoginMigrationError',
+	LoginMigrationPreValidationStarted = 'LoginMigrationPreValidationStarted',
+	LoginMigrationPreValidationFailed = 'LoginMigrationPreValidationFailed',
+	LoginMigrationPreValidationSuccessful = 'LoginMigrationPreValidationSuccessful',
 	TdeMigrationSuccess = 'TdeMigrationSuccess',
 	TdeMigrationFailures = 'TdeMigrationFailures',
 	TdeMigrationClientException = 'TdeMigrationClientException',
@@ -88,7 +94,13 @@ export enum TelemetryAction {
 	TdeConfigurationAlreadyMigrated = 'TdeConfigurationAlreadyMigrated',
 	TdeConfigurationCancelled = 'TdeConfigurationCancelled',
 	ImportAssessmentSuccess = 'ImportAssessmentSuccess',
-	ImportAssessmentFailed = 'ImportAssessmentFailed'
+	ImportAssessmentFailed = 'ImportAssessmentFailed',
+	SaveArmTemplateSuccess = 'SaveArmTemplateSuccess',
+	CopyArmTemplateSuccess = 'CopyArmTemplateSuccess',
+	OpenCustomDeploymentPortalSuccess = 'OpenCustomDeploymentPortalSuccess',
+	OpenTargetProvisioningWizard = 'OpenTargetProvisioningWizard',
+	OpenDeployArmTemplateDialog = 'OpenDeployArmTemplateDialog',
+	OnArcAssessmentLinkClick = 'OnArcAssessmentLinkClick'
 }
 
 export function logError(telemetryView: TelemetryViews, err: string, error: any): void {
@@ -113,7 +125,10 @@ export function getTelemetryProps(migrationStateModel: MigrationStateModel): Tel
 		'subscriptionId': migrationStateModel._targetSubscription?.id,
 		'resourceGroup': migrationStateModel._resourceGroup?.name,
 		'targetType': migrationStateModel._targetType,
+		'isSqlServerTrackedInAzure': String(migrationStateModel._isSqlServerEnabledByArc),
+		'sourceInfrastructureType': constants.SourceInfrastructureTypeLookup[migrationStateModel._sourceInfrastructureType],
 		'tenantId': tenantId,
+		'migrationTracked': String(migrationStateModel._trackMigration)
 	};
 }
 

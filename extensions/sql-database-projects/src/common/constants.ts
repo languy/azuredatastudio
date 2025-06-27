@@ -26,6 +26,12 @@ export const msdb = 'msdb';
 export const MicrosoftDatatoolsSchemaSqlSql = 'Microsoft.Data.Tools.Schema.Sql.Sql';
 export const databaseSchemaProvider = 'DatabaseSchemaProvider';
 export const sqlProjectSdk = 'Microsoft.Build.Sql';
+export const problemMatcher = '$sqlproj-problem-matcher';
+export const sqlProjTaskType = 'sqlproj-build';
+export const dotnet = 'dotnet';
+export const build = 'build';
+export const runCodeAnalysisParam = '/p:RunSqlCodeAnalysis=true';
+export const detailedVerbose = '-v:detailed';
 
 //#endregion
 
@@ -40,7 +46,7 @@ export const edgeProjectTypeDescription = localize('edgeProjectTypeDescription',
 
 export const emptySqlDatabaseSdkProjectTypeId = 'EmptySqlDbSdkProj';
 export const emptySdkProjectTypeDisplayName = localize('emptySdkProjectTypeDisplayName', "SQL Database (SDK)");
-export const emptySdkProjectTypeDescription = localize('emptySdkProjectTypeDescription', "Develop and publish schemas for SQL databases with Microsoft.Build.Sql (preview), starting from an empty SDK-style project.");
+export const emptySdkProjectTypeDescription = localize('emptySdkProjectTypeDescription', "Develop and publish schemas for SQL databases with Microsoft.Build.Sql, starting from an empty SDK-style project.");
 
 export const emptyAzureDbSqlDatabaseProjectTypeId = 'EmptyAzureSqlDbProj';
 export const emptyAzureDbProjectTypeDisplayName = localize('emptyAzureDbProjectTypeDisplayName', "Azure SQL Database");
@@ -190,14 +196,14 @@ export const SqlServerName = 'SQL server';
 export const AzureSqlServerName = 'Azure SQL server';
 export const SqlServerDockerImageName = 'Microsoft SQL Server';
 export const SqlServerDocker2022ImageName = 'Microsoft SQL Server 2022';
-export const AzureSqlDbFullDockerImageName = 'Azure SQL Database emulator';
+export const AzureSqlDbFullDockerImageName = 'Microsoft SQL Server';
 export const AzureSqlLogicalServerName = 'Azure SQL logical server';
 export const selectPublishOption = localize('selectPublishOption', "Select where to publish the project to");
 export const defaultQuickPickItem = localize('defaultQuickPickItem', "Default - image defined as default in the container registry");
 export function publishToExistingServer(name: string) { return localize('publishToExistingServer', "Publish to an existing {0}", name); }
 export function publishToDockerContainer(name: string) { return localize('publishToDockerContainer', "Publish to new {0} local development container", name); }
 export function publishToDockerContainerPreview(name: string) { return localize('publishToDockerContainerPreview', "Publish to new {0} local development container (Preview)", name); }
-export const publishToAzureEmulator = localize('publishToAzureEmulator', "Publish to new Azure SQL Database emulator");
+export const publishToAzureEmulator = localize('publishToAzureEmulator', "Publish to new SQL Server local development container");
 export const publishToNewAzureServer = localize('publishToNewAzureServer', "Publish to new Azure SQL logical server (Preview)");
 export const azureServerName = localize('azureServerName', "Azure SQL server name");
 export const azureSubscription = localize('azureSubscription', "Azure subscription");
@@ -322,6 +328,7 @@ export const artifactReference = localize('artifactReference', "Artifact Referen
 export const packageReference = localize('packageReference', "Package Reference");
 export const referenceTypeRadioButtonsGroupTitle = localize('referenceTypeRadioButtonsGroupTitle', "Reference Type");
 
+
 //#endregion
 
 //#region Create Project From Database dialog strings
@@ -341,11 +348,14 @@ export const includePermissionsLabel = localize('includePermissionsLabel', "Incl
 export const includePermissionsInProject = localize('includePermissionsInProject', "Include permissions in project");
 export const browseEllipsisWithIcon = `$(folder) ${localize('browseEllipsis', "Browse...")}`;
 export const selectProjectLocation = localize('selectProjectLocation', "Select project location");
-export const sdkStyleProject = localize('sdkStyleProject', 'SDK-style project (Preview)');
+export const sdkStyleProject = localize('sdkStyleProject', 'SDK-style project');
 export const YesRecommended = localize('yesRecommended', "Yes (Recommended)");
 export const SdkLearnMorePlaceholder = localize('sdkLearnMorePlaceholder', "Click \"Learn More\" button for more information about SDK-style projects");
 export const ProjectParentDirectoryNotExistError = (location: string): string => { return localize('dataworkspace.projectParentDirectoryNotExistError', "The selected project location '{0}' does not exist or is not a directory.", location); };
 export const ProjectDirectoryAlreadyExistError = (projectName: string, location: string): string => { return localize('dataworkspace.projectDirectoryAlreadyExistError', "There is already a directory named '{0}' in the selected location: '{1}'.", projectName, location); };
+export const confirmCreateProjectWithBuildTaskDialogName = localize('configureSqlProjDefaultBuild', "Do you want to configure SQL project build as the default build configuration for this folder?");
+export const buildTaskName = localize('buildTaskName', "Build");
+export const buildWithCodeAnalysisTaskName = localize('buildWithCodeAnalysisTaskName', "Build with Code Analysis");
 
 //#endregion
 
@@ -457,12 +467,13 @@ export const externalStreamingJobFriendlyName = localize('externalStreamingJobFr
 export const preDeployScriptFriendlyName = localize('preDeployScriptFriendlyName', "Script.PreDeployment");
 export const postDeployScriptFriendlyName = localize('postDeployScriptFriendlyName', "Script.PostDeployment");
 export const publishProfileFriendlyName = localize('publishProfileFriendlyName', "Publish Profile");
+export const tasksJsonFriendlyName = localize('tasksJsonFriendlyName', "Tasks.json");
 
 //#endregion
 
 //#region Build
-export const DotnetInstallationConfirmation: string = localize('sqlDatabaseProjects.DotnetInstallationConfirmation', "The .NET SDK cannot be located. Project build will not work. Please install .NET 6 SDK or higher or update the .NET SDK location in settings if already installed.");
-export function NetCoreSupportedVersionInstallationConfirmation(installedVersion: string) { return localize('sqlDatabaseProjects.NetCoreSupportedVersionInstallationConfirmation', "Currently installed .NET SDK version is {0}, which is not supported. Project build will not work. Please install .NET 6 SDK or higher or update the .NET SDK supported version location in settings if already installed.", installedVersion); }
+export const DotnetInstallationConfirmation: string = localize('sqlDatabaseProjects.DotnetInstallationConfirmation', "The .NET SDK cannot be located. Project build will not work. Please install .NET 8 SDK or higher or update the .NET SDK location in settings if already installed.");
+export function NetCoreSupportedVersionInstallationConfirmation(installedVersion: string) { return localize('sqlDatabaseProjects.NetCoreSupportedVersionInstallationConfirmation', "Currently installed .NET SDK version is {0}, which is not supported. Project build will not work. Please install .NET 8 SDK or higher or update the .NET SDK supported version location in settings if already installed.", installedVersion); }
 export const UpdateDotnetLocation: string = localize('sqlDatabaseProjects.UpdateDotnetLocation', "Update Location");
 export const projectsOutputChannel = localize('sqlDatabaseProjects.outputChannel', "Database Projects");
 

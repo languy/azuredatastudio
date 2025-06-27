@@ -10,12 +10,9 @@ const minorNodeVersion = parseInt(nodeVersion[2]);
 const patchNodeVersion = parseInt(nodeVersion[3]);
 
 if (!process.env['VSCODE_SKIP_NODE_VERSION_CHECK']) {
-	if (majorNodeVersion < 18 || (majorNodeVersion === 18 && minorNodeVersion < 15)) {
-		console.error('\033[1;31m*** Please use node.js versions >=18.15.x and <19.\033[0;0m');
-		err = true;
-	}
-	if (majorNodeVersion >= 19) {
-		console.warn('\033[1;31m*** Warning: Versions of node.js >= 19 have not been tested.\033[0;0m')
+	if (majorNodeVersion < 20) {
+		console.error('\x1b[1;31m*** Please use latest Node.js v20 LTS for development.\x1b[0;0m');
+		throw new Error();
 	}
 }
 
@@ -102,10 +99,11 @@ function installHeaders() {
 	const yarnResult = cp.spawnSync(yarn, ['install'], {
 		env: process.env,
 		cwd: path.join(__dirname, 'gyp'),
-		stdio: 'inherit'
+		stdio: 'inherit',
+		shell: true
 	});
 	if (yarnResult.error || yarnResult.status !== 0) {
-		console.error(`Installing node-gyp failed`);
+		console.error(`Installing node-gyp failed: ` + yarnResult.error + " --- " + yarnResult.status);
 		err = true;
 		return;
 	}
@@ -114,32 +112,14 @@ function installHeaders() {
 	// file checked into our repository. So from that point it is save to construct the path
 	// to that executable
 	const node_gyp = path.join(__dirname, 'gyp', 'node_modules', '.bin', 'node-gyp.cmd');
-	const result = cp.execFileSync(node_gyp, ['list'], { encoding: 'utf8' });
+	const result = cp.execFileSync(node_gyp, ['list'], { encoding: 'utf8', shell: true });
 	const versions = new Set(result.split(/\n/g).filter(line => !line.startsWith('gyp info')).map(value => value));
 
 	const local = getHeaderInfo(path.join(__dirname, '..', '..', '.yarnrc'));
-	const remote = getHeaderInfo(path.join(__dirname, '..', '..', 'remote', '.yarnrc'));
 
 	if (local !== undefined && !versions.has(local.target)) {
 		// Both disturl and target come from a file checked into our repository
-		cp.execFileSync(node_gyp, ['install', '--dist-url', local.disturl, local.target]);
-	}
-
-	// Avoid downloading headers for Windows arm64 till we move to Nodejs v19 in remote
-	// which is the first official release with support for the architecture. Downloading
-	// the headers for older versions now redirect to https://origin.nodejs.org/404.html
-	// which causes checksum validation error in node-gyp.
-	//
-	// gyp http 200 https://origin.nodejs.org/404.html
-	// gyp WARN install got an error, rolling back install
-	// gyp ERR! install error
-	// gyp ERR! stack Error: win-arm64/node.lib local checksum 4c62bed7a032f7b36984321b7ffdd60b596fac870672037ff879ae9ac9548fb7 not match remote undefined
-	//
-	if (remote !== undefined && !versions.has(remote.target) &&
-		process.env['npm_config_arch'] !== "arm64" &&
-		process.arch !== "arm64") {
-		// Both disturl and target come from a file checked into our repository
-		cp.execFileSync(node_gyp, ['install', '--dist-url', remote.disturl, remote.target]);
+		cp.execFileSync(node_gyp, ['install', '--dist-url', local.disturl, local.target], { shell: true });
 	}
 }
 

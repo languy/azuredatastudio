@@ -109,7 +109,7 @@ export class TerminalProcess extends Disposable implements ITerminalChildProcess
 	private _isDisposed: boolean = false;
 	private _windowsShellHelper: WindowsShellHelper | undefined;
 	private _childProcessMonitor: ChildProcessMonitor | undefined;
-	private _titleInterval: NodeJS.Timer | null = null;
+	private _titleInterval: NodeJS.Timeout | null = null;
 	private _writeQueue: IWriteObject[] = [];
 	private _writeTimeout: NodeJS.Timeout | undefined;
 	private _delayedResizer: DelayedResizer | undefined;
@@ -201,7 +201,7 @@ export class TerminalProcess extends Disposable implements ITerminalChildProcess
 
 		let injection: IShellIntegrationConfigInjection | undefined;
 		if (this._options.shellIntegration.enabled) {
-			injection = getShellIntegrationInjection(this.shellLaunchConfig, this._options, this._ptyOptions.env, this._logService, this._productService);
+			injection = await getShellIntegrationInjection(this.shellLaunchConfig, this._options, this._ptyOptions.env, this._logService, this._productService);
 			if (injection) {
 				this._onDidChangeProperty.fire({ type: ProcessPropertyType.UsedShellIntegrationInjection, value: true });
 				if (injection.envMixin) {

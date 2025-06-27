@@ -56,7 +56,7 @@ export class BuildHelper {
 
 	public async ensureDacFxDllsPresence(outputChannel: vscode.OutputChannel): Promise<boolean> {
 		const sdkName = 'Microsoft.Build.Sql';
-		const microsoftBuildSqlDefaultVersion = '0.2.0-preview'; // default version of Microsoft.Build.Sql nuget to use for building legacy style projects, update in README when updating this
+		const microsoftBuildSqlDefaultVersion = '1.0.0'; // default version of Microsoft.Build.Sql nuget to use for building legacy style projects, update in README when updating this
 
 		const dacFxBuildFiles: string[] = [
 			'Microsoft.Data.SqlClient.dll',
@@ -76,14 +76,14 @@ export class BuildHelper {
 		const microsoftBuildSqlVersionConfig = vscode.workspace.getConfiguration(DBProjectConfigurationKey)[constants.microsoftBuildSqlVersionKey];
 		const sdkVersion = !!microsoftBuildSqlVersionConfig ? microsoftBuildSqlVersionConfig : microsoftBuildSqlDefaultVersion;
 
-		const microsoftBuildSqlDllLocation = path.join('tools', 'netstandard2.1');
+		const microsoftBuildSqlDllLocation = path.join('tools', 'net8.0');
 		return this.ensureNugetAndFilesPresence(sdkName, sdkVersion, dacFxBuildFiles, microsoftBuildSqlDllLocation, outputChannel);
 	}
 
 	public async ensureScriptDomDllPresence(outputChannel: vscode.OutputChannel): Promise<boolean> {
 		const scriptdomNugetPkgName = 'Microsoft.SqlServer.TransactSql.ScriptDom';
 		const scriptDomDll = 'Microsoft.SqlServer.TransactSql.ScriptDom.dll';
-		const scriptDomNugetVersion = '161.8910.0'; // TODO: make this a configurable setting, like the Microsoft.Build.Sql version
+		const scriptDomNugetVersion = '161.9142.1'; // TODO: make this a configurable setting, like the Microsoft.Build.Sql version
 		const scriptDomDllLocation = path.join('lib', 'netstandard2.1');
 
 		return this.ensureNugetAndFilesPresence(scriptdomNugetPkgName, scriptDomNugetVersion, [scriptDomDll], scriptDomDllLocation, outputChannel);
@@ -178,26 +178,32 @@ export class BuildHelper {
 		return this.extensionBuildDir;
 	}
 
-	public constructBuildArguments(projectPath: string, buildDirPath: string, sqlProjStyle: ProjectType): string {
-		projectPath = utils.getQuotedPath(projectPath);
+	/**
+	 * Constructs the build arguments for building a sqlproj file
+	 * @param buildDirPath The path to the build directory where the dlls and targets are located
+	 * @param sqlProjStyle The type of the sqlproj project (LegacyStyle or SdkStyle)
+	 * @returns An array of arguments to be used for building the sqlproj file
+	 */
+	public constructBuildArguments(buildDirPath: string, sqlProjStyle: ProjectType): string[] {
 		buildDirPath = utils.getQuotedPath(buildDirPath);
+		const args: string[] = [
+			'/p:NetCoreBuild=true',
+			`/p:SystemDacpacsLocation=${buildDirPath}`
+		];
 
-		// Right now SystemDacpacsLocation and NETCoreTargetsPath get set to the same thing, but separating them out for if we move
-		// the system dacpacs somewhere else and also so that the variable name makes more sense if building from the commandline,
-		// since SDK style projects don't to specify the targets path, just where the system dacpacs are
-		if (utils.getAzdataApi()) {
-			if (sqlProjStyle === mssql.ProjectType.SdkStyle) {
-				return ` build ${projectPath} /p:NetCoreBuild=true /p:SystemDacpacsLocation=${buildDirPath}`;
-			} else {
-				return ` build ${projectPath} /p:NetCoreBuild=true /p:NETCoreTargetsPath=${buildDirPath} /p:SystemDacpacsLocation=${buildDirPath}`;
-			}
-		} else {
-			if (sqlProjStyle === vscodeMssql.ProjectType.SdkStyle) {
-				return ` build ${projectPath} /p:NetCoreBuild=true /p:SystemDacpacsLocation=${buildDirPath}`;
-			} else {
-				return ` build ${projectPath} /p:NetCoreBuild=true /p:NETCoreTargetsPath=${buildDirPath} /p:SystemDacpacsLocation=${buildDirPath}`;
-			}
+		// Adding NETCoreTargetsPath only for non-SDK style projects
+		const isSdkStyle = utils.getAzdataApi()
+			? sqlProjStyle === mssql.ProjectType.SdkStyle
+			: sqlProjStyle === vscodeMssql.ProjectType.SdkStyle;
+
+		if (!isSdkStyle) {
+			args.push(`/p:NETCoreTargetsPath=${buildDirPath}`);
 		}
+
+		// Adding verbose flag
+		args.push(constants.detailedVerbose);
+
+		return args;
 	}
 }
 

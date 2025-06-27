@@ -23,7 +23,6 @@ import { FolderNode, FileNode } from '../models/tree/fileFolderTreeItem';
 import { BaseProjectTreeItem } from '../models/tree/baseTreeItem';
 import { ImportDataModel } from '../models/api/import';
 import { NetCoreTool, DotNetError } from '../tools/netcoreTool';
-import { ShellCommandOptions } from '../tools/shellExecutionHelper';
 import { BuildHelper } from '../tools/buildHelper';
 import { readPublishProfile, promptForSavingProfile, savePublishProfile } from '../models/publishProfile/publishProfile';
 import { AddDatabaseReferenceDialog } from '../dialogs/addDatabaseReferenceDialog';
@@ -202,17 +201,18 @@ export class ProjectsController {
 		let result: azdataType.ResultStatus | mssqlVscode.ResultStatus;
 
 		const sqlProjectsService = await utils.getSqlProjectsService();
+		const microsoftBuildSqlSDKStyleDefaultVersion = '1.0.0'; // default version of Microsoft.Build.Sql for SDK style projects, update in README when updating this
 		if (utils.getAzdataApi()) {
 			const projectStyle = creationParams.sdkStyle ? mssql.ProjectType.SdkStyle : mssql.ProjectType.LegacyStyle;
-			result = await (sqlProjectsService as mssql.ISqlProjectsService).createProject(newProjFilePath, projectStyle, targetPlatform);
+			result = await (sqlProjectsService as mssql.ISqlProjectsService).createProject(newProjFilePath, projectStyle, targetPlatform, microsoftBuildSqlSDKStyleDefaultVersion);
 		} else {
 			const projectStyle = creationParams.sdkStyle ? mssqlVscode.ProjectType.SdkStyle : mssqlVscode.ProjectType.LegacyStyle;
-			result = await (sqlProjectsService as mssqlVscode.ISqlProjectsService).createProject(newProjFilePath, projectStyle, targetPlatform);
+			result = await (sqlProjectsService as mssqlVscode.ISqlProjectsService).createProject(newProjFilePath, projectStyle, targetPlatform, microsoftBuildSqlSDKStyleDefaultVersion);
 		}
 
 		utils.throwIfFailed(result);
 
-		await this.addTemplateFiles(newProjFilePath, creationParams.projectTypeId);
+		await this.addTemplateFiles(newProjFilePath, creationParams.projectTypeId, creationParams.configureDefaultBuild ?? false);
 
 		return newProjFilePath;
 	}
@@ -221,15 +221,17 @@ export class ProjectsController {
 	 * Adds the template files for the provided project type
 	 * @param newProjFilePath path to project to add template files to
 	 * @param projectTypeId project type id
+	 * @param configureDefaultBuild whether to configure the default build task in tasks.json
+	 *
 	 */
-	private async addTemplateFiles(newProjFilePath: string, projectTypeId: string): Promise<void> {
+	private async addTemplateFiles(newProjFilePath: string, projectTypeId: string, configureDefaultBuild: boolean): Promise<void> {
+		const project = await Project.openProject(newProjFilePath);
 		if (projectTypeId === constants.emptySqlDatabaseProjectTypeId || newProjFilePath === '') {
+			await this.addTasksJsonFile(project, configureDefaultBuild);
 			return;
 		}
 
 		if (projectTypeId === constants.edgeSqlDatabaseProjectTypeId) {
-			const project = await Project.openProject(newProjFilePath);
-
 			await this.addFileToProjectFromTemplate(project, templates.get(ItemType.table), 'DataTable.sql', new Map([['OBJECT_NAME', 'DataTable']]));
 			await this.addFileToProjectFromTemplate(project, templates.get(ItemType.dataSource), 'EdgeHubInputDataSource.sql', new Map([['OBJECT_NAME', 'EdgeHubInputDataSource'], ['LOCATION', 'edgehub://']]));
 			await this.addFileToProjectFromTemplate(project, templates.get(ItemType.dataSource), 'SqlOutputDataSource.sql', new Map([['OBJECT_NAME', 'SqlOutputDataSource'], ['LOCATION', 'sqlserver://tcp:.,1433']]));
@@ -238,6 +240,17 @@ export class ProjectsController {
 			await this.addFileToProjectFromTemplate(project, templates.get(ItemType.externalStream), 'SqlOutputStream.sql', new Map([['OBJECT_NAME', 'SqlOutputStream'], ['DATA_SOURCE_NAME', 'SqlOutputDataSource'], ['LOCATION', 'TSQLStreaming.dbo.DataTable'], ['OPTIONS', '']]));
 			await this.addFileToProjectFromTemplate(project, templates.get(ItemType.externalStreamingJob), 'EdgeStreamingJob.sql', new Map([['OBJECT_NAME', 'EdgeStreamingJob']]));
 		}
+
+		await this.addTasksJsonFile(project, configureDefaultBuild);
+	}
+
+	/**
+	 * Adds a tasks.json file to the project
+	 * @param project project to add the tasks.json file to
+	 * @param configureDefaultBuild whether to configure the default build task in tasks.json
+	 */
+	private async addTasksJsonFile(project: ISqlProject, configureDefaultBuild: boolean): Promise<void> {
+		await this.addFileToProjectFromTemplate(project, templates.get(ItemType.tasks), '.vscode/tasks.json', new Map([['ConfigureDefaultBuild', configureDefaultBuild.toString()]]));
 	}
 
 	private async addFileToProjectFromTemplate(project: ISqlProject, itemType: templates.ProjectScriptType, relativePath: string, expansionMacros: Map<string, string>): Promise<string> {
@@ -253,6 +266,7 @@ export class ProjectsController {
 				await project.addPostDeploymentScript(relativePath);
 				break;
 			case ItemType.publishProfile:
+			case ItemType.tasks: // tasks.json is not added to the build
 				await project.addNoneItem(relativePath);
 				break;
 			default: // a normal SQL object script
@@ -268,16 +282,18 @@ export class ProjectsController {
 	/**
 	 * Builds a project, producing a dacpac
 	 * @param treeNode a treeItem in a project's hierarchy, to be used to obtain a Project
+	 * @param codeAnalysis whether to run code analysis
 	 * @returns path of the built dacpac
 	 */
-	public async buildProject(treeNode: dataworkspace.WorkspaceTreeItem): Promise<string>;
+	public async buildProject(treeNode: dataworkspace.WorkspaceTreeItem, codeAnalysis?: boolean): Promise<string>;
 	/**
 	 * Builds a project, producing a dacpac
 	 * @param project Project to be built
+	 * @param codeAnalysis whether to run code analysis
 	 * @returns path of the built dacpac
 	 */
-	public async buildProject(project: Project): Promise<string>;
-	public async buildProject(context: Project | dataworkspace.WorkspaceTreeItem): Promise<string> {
+	public async buildProject(project: Project, codeAnalysis?: boolean): Promise<string>;
+	public async buildProject(context: Project | dataworkspace.WorkspaceTreeItem, codeAnalysis: boolean = false): Promise<string> {
 		const project: Project = await this.getProjectFromContext(context);
 
 		const startTime = new Date();
@@ -300,11 +316,9 @@ export class ProjectsController {
 			}
 		}
 
-		const options: ShellCommandOptions = {
-			commandTitle: 'Build',
-			workingDirectory: project.projectFolderPath,
-			argument: this.buildHelper.constructBuildArguments(project.projectFilePath, this.buildHelper.extensionBuildDirPath, project.sqlProjStyle)
-		};
+		// Get the build arguments from buildhelper method and create a new vscode.task
+		const buildArgs: string[] = this.buildHelper.constructBuildArguments(this.buildHelper.extensionBuildDirPath, project.sqlProjStyle);
+		const vscodeTask: vscode.Task = await this.createVsCodeTask(project, codeAnalysis, buildArgs);
 
 		try {
 			const crossPlatCompatible: boolean = await Project.checkPromptCrossPlatStatus(project, true /* blocking prompt */);
@@ -320,9 +334,14 @@ export class ProjectsController {
 		}
 
 		try {
-			await this.netCoreTool.runDotnetCommand(options);
-			const timeToBuild = new Date().getTime() - startTime.getTime();
+			// Check if the dotnet core is installed and if not, prompt the user to install it
+			// If the user does not have .NET Core installed, we will throw an error and stops building the project
+			await this.netCoreTool.verifyNetCoreInstallation()
+			// If vscodeTask is defined, run it, otherwise run the dotnet command directly
+			await vscode.tasks.executeTask(vscodeTask);
 
+			// If the build was successful, we will get the path to the built dacpac
+			const timeToBuild = new Date().getTime() - startTime.getTime();
 			const currentBuildIndex = this.buildInfo.findIndex(b => b.startDate === currentBuildTimeInfo);
 			this.buildInfo[currentBuildIndex].status = Status.success;
 			this.buildInfo[currentBuildIndex].timeToCompleteAction = utils.timeConversion(timeToBuild);
@@ -333,6 +352,7 @@ export class ProjectsController {
 				.send();
 
 			return project.dacpacOutputPath;
+
 		} catch (err) {
 			const timeToFailureBuild = new Date().getTime() - startTime.getTime();
 
@@ -354,6 +374,51 @@ export class ProjectsController {
 			}
 			return '';
 		}
+	}
+
+	/**
+	 * Creates a VS Code task for building the project
+	 * @param project Project to be built
+	 * @param codeAnalysis Whether to run code analysis
+	 * @param buildArguments Arguments to pass to the build command
+	 * @returns A VS Code task for building the project
+	 * */
+	private async createVsCodeTask(project: Project, codeAnalysis: boolean, buildArguments: string[]): Promise<vscode.Task> {
+		let vscodeTask: vscode.Task | undefined = undefined;
+		const label = codeAnalysis
+			? constants.buildWithCodeAnalysisTaskName
+			: constants.buildTaskName;
+
+		// Create an array of arguments instead of a single command string
+		const args: string[] = [constants.build, utils.getNonQuotedPath(project.projectFilePath)];
+
+		if (codeAnalysis) {
+			args.push(constants.runCodeAnalysisParam);
+		}
+
+		// Adding build arguments to the args
+		args.push(...buildArguments);
+
+		// Task definition with required args
+		const taskDefinition: vscode.TaskDefinition = {
+			type: constants.sqlProjTaskType,
+			label: label,
+			command: constants.dotnet,
+			args: args,
+			problemMatcher: constants.problemMatcher
+		};
+
+		// Create a new task with the definition and shell executable
+		vscodeTask = new vscode.Task(
+			taskDefinition,
+			vscode.TaskScope.Workspace,
+			taskDefinition.label,
+			taskDefinition.type,
+			new vscode.ShellExecution(taskDefinition.command, args, { cwd: project.projectFolderPath }),
+			taskDefinition.problemMatcher
+		);
+
+		return vscodeTask;
 	}
 
 	//#region Publish
@@ -540,9 +605,11 @@ export class ProjectsController {
 			return undefined; // buildProject() handles displaying the error
 		}
 
-		// copy dacpac to temp location before publishing
-		const tempPath = path.join(os.tmpdir(), `${path.parse(dacpacPath).name}_${new Date().getTime()}${constants.sqlprojExtension}`);
-		await fs.copyFile(dacpacPath, tempPath);
+		// copy entire build output to temp location before publishing
+		const tempDir = path.join(os.tmpdir(), `${path.parse(dacpacPath).name}_${new Date().getTime()}`);
+		await fs.mkdir(tempDir);
+		await fs.cp(path.dirname(dacpacPath), tempDir, { recursive: true });
+		const tempDacpacPath = path.join(tempDir, path.basename(dacpacPath));
 		const dacFxService = await utils.getDacFxService();
 
 		let result: mssql.DacFxResult;
@@ -563,19 +630,19 @@ export class ProjectsController {
 			if (publish) {
 				telemetryProps.publishAction = 'deploy';
 				if (azdataApi) {
-					result = await (dacFxService as mssql.IDacFxService).deployDacpac(tempPath, settings.databaseName, true, settings.connectionUri, azdataApi.TaskExecutionMode.execute, settings.sqlCmdVariables, settings.deploymentOptions as mssql.DeploymentOptions);
+					result = await (dacFxService as mssql.IDacFxService).deployDacpac(tempDacpacPath, settings.databaseName, true, settings.connectionUri, azdataApi.TaskExecutionMode.execute, settings.sqlCmdVariables, settings.deploymentOptions as mssql.DeploymentOptions);
 				} else {
 					// Have to cast to unknown first to get around compiler error since the mssqlVscode doesn't exist as an actual module at runtime
-					result = await (dacFxService as mssqlVscode.IDacFxService).deployDacpac(tempPath, settings.databaseName, true, settings.connectionUri, TaskExecutionMode.execute as unknown as mssqlVscode.TaskExecutionMode, settings.sqlCmdVariables, settings.deploymentOptions as mssqlVscode.DeploymentOptions);
+					result = await (dacFxService as mssqlVscode.IDacFxService).deployDacpac(tempDacpacPath, settings.databaseName, true, settings.connectionUri, TaskExecutionMode.execute as unknown as mssqlVscode.TaskExecutionMode, settings.sqlCmdVariables, settings.deploymentOptions as mssqlVscode.DeploymentOptions);
 				}
 
 			} else {
 				telemetryProps.publishAction = 'generateScript';
 				if (azdataApi) {
-					result = await (dacFxService as mssql.IDacFxService).generateDeployScript(tempPath, settings.databaseName, settings.connectionUri, azdataApi.TaskExecutionMode.script, settings.sqlCmdVariables, settings.deploymentOptions as mssql.DeploymentOptions);
+					result = await (dacFxService as mssql.IDacFxService).generateDeployScript(tempDacpacPath, settings.databaseName, settings.connectionUri, azdataApi.TaskExecutionMode.script, settings.sqlCmdVariables, settings.deploymentOptions as mssql.DeploymentOptions);
 				} else {
 					// Have to cast to unknown first to get around compiler error since the mssqlVscode doesn't exist as an actual module at runtime
-					result = await (dacFxService as mssqlVscode.IDacFxService).generateDeployScript(tempPath, settings.databaseName, settings.connectionUri, TaskExecutionMode.script as unknown as mssqlVscode.TaskExecutionMode, settings.sqlCmdVariables, settings.deploymentOptions as mssqlVscode.DeploymentOptions);
+					result = await (dacFxService as mssqlVscode.IDacFxService).generateDeployScript(tempDacpacPath, settings.databaseName, settings.connectionUri, TaskExecutionMode.script as unknown as mssqlVscode.TaskExecutionMode, settings.sqlCmdVariables, settings.deploymentOptions as mssqlVscode.DeploymentOptions);
 				}
 
 			}
@@ -1448,7 +1515,8 @@ export class ProjectsController {
 				newProjName: projectInfo.projectName,
 				folderUri: vscode.Uri.file(projectInfo.outputFolder),
 				projectTypeId: constants.emptySqlDatabaseProjectTypeId,
-				sdkStyle: !!options?.isSDKStyle
+				sdkStyle: !!options?.isSDKStyle,
+				configureDefaultBuild: true
 			});
 
 			const project = await Project.openProject(newProjFilePath);
@@ -1579,10 +1647,7 @@ export class ProjectsController {
 				const databaseName = (await utils.getVscodeMssqlApi()).getDatabaseNameFromTreeNode(treeNodeContext);
 				(profile as mssqlVscode.IConnectionInfo).database = databaseName;
 			}
-			const model = await createNewProjectFromDatabaseWithQuickpick(profile as mssqlVscode.IConnectionInfo);
-			if (model) {
-				await this.createProjectFromDatabaseCallback(model, profile as mssqlVscode.IConnectionInfo, (profile as mssqlVscode.IConnectionInfo)?.server);
-			}
+			await createNewProjectFromDatabaseWithQuickpick(profile as mssqlVscode.IConnectionInfo, (model: ImportDataModel, connectionInfo?: string | mssqlVscode.IConnectionInfo, serverName?: string) => this.createProjectFromDatabaseCallback(model, connectionInfo, serverName));
 			return undefined;
 		}
 
@@ -1615,7 +1680,8 @@ export class ProjectsController {
 				folderUri: vscode.Uri.file(newProjFolderUri),
 				projectTypeId: model.sdkStyle ? constants.emptySqlDatabaseSdkProjectTypeId : constants.emptySqlDatabaseProjectTypeId,
 				sdkStyle: model.sdkStyle,
-				targetPlatform: targetPlatform
+				targetPlatform: targetPlatform,
+				configureDefaultBuild: true
 			});
 
 			model.filePath = path.dirname(newProjFilePath);
@@ -1962,4 +2028,5 @@ export interface NewProjectParams {
 	sdkStyle: boolean;
 	projectGuid?: string;
 	targetPlatform?: SqlTargetPlatform;
+	configureDefaultBuild?: boolean;
 }

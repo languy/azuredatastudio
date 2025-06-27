@@ -388,11 +388,11 @@ export class AssessmentSummaryCard implements vscode.Disposable {
 			url: '',
 			height: 18,
 			CSSStyles: {
-				'font-size': '13px',
+				'font-size': '12px',
 				'font-weight': '400',
 				'line-height': '18px',
 				'text-decoration': 'none',
-				'margin-left': '25px',
+				'margin-left': '5px',
 				'display': 'none',
 			}
 		}).component();
@@ -408,10 +408,17 @@ export class AssessmentSummaryCard implements vscode.Disposable {
 		});
 
 		this._generateTemplateLink = view.modelBuilder.hyperlink().withProps({
-			label: constants.GENERATE_ARM_TEMPLATE,
+			label: constants.UPLOAD_TEMPLATE_TO_AZURE,
 			url: '',
 			height: 18,
-			CSSStyles: styles.VIEW_DETAILS_GENERATE_TEMPLATE_LINK
+			CSSStyles: {
+				'font-size': '12px',
+				'font-weight': '400',
+				'line-height': '18px',
+				'text-decoration': 'none',
+				'margin-left': '5px',
+				'display': 'none',
+			}
 		}).component();
 
 		this._generateTemplateLink.onDidClick(async () => {

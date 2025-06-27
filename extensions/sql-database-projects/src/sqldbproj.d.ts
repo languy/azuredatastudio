@@ -24,7 +24,7 @@ declare module 'sqldbproj' {
 		 * @param sdkStyle whether the project is sdk-style. Default is false
 		 * @returns Uri of the newly created project file
 		 */
-		createProject(name: string, location: vscode.Uri, projectTypeId: string, targetPlatform: SqlTargetPlatform, sdkStyle?: boolean): Promise<vscode.Uri>;
+		createProject(name: string, location: vscode.Uri, projectTypeId: string, targetPlatform: SqlTargetPlatform, sdkStyle?: boolean, configureDefaultBuild?: boolean): Promise<vscode.Uri>;
 
 		/**
 		 * Opens and loads a .sqlproj file
@@ -105,7 +105,8 @@ declare module 'sqldbproj' {
 		folder = 'folder',
 		preDeployScript = 'preDeployScript',
 		postDeployScript = 'postDeployScript',
-		publishProfile = 'publishProfile'
+		publishProfile = 'publishProfile',
+		tasks = 'tasks',
 	}
 
 	/**
@@ -324,7 +325,7 @@ declare module 'sqldbproj' {
 		sqlEdge = 'Azure SQL Edge',
 		sqlDwServerless = 'Azure Synapse Serverless SQL Pool',
 		sqlDwUnified = 'Synapse Data Warehouse in Microsoft Fabric',
-		sqlDbFabric = 'Fabric Mirrored SQL Database (Preview)'
+		sqlDbFabric = 'SQL database in Fabric (preview)'
 	}
 
 	export interface ISqlConnectionProperties {

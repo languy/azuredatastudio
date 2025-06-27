@@ -53,14 +53,21 @@ suite('WorkspaceService', function (): void {
 		should.strictEqual(projects.length, 0, 'no projects should be returned when projects are present in the workspace file');
 		workspaceFoldersStub.restore();
 
-		// Projects are present
+		// Projects are present - Not in order
 		sinon.stub(vscode.workspace, 'workspaceFolders').value([{ uri: vscode.Uri.file('') }]);
-		sinon.stub(service, 'getAllProjectsInFolder').resolves([vscode.Uri.file('/test/folder/abc.sqlproj'), vscode.Uri.file('/test/folder/folder1/abc1.sqlproj'), vscode.Uri.file('/test/folder/folder2/abc2.sqlproj')]);
+		sinon.stub(service, 'getAllProjectsInFolder').resolves([
+			vscode.Uri.file('/test/folder/folder2/abc2.sqlproj'),
+			vscode.Uri.file('/test/folder/abc.sqlproj'),
+			vscode.Uri.file('/test/folder/folder1/abc1.sqlproj')
+		]);
+
 		projects = await service.getProjectsInWorkspace(undefined, true);
 		should.strictEqual(projects.length, 3, 'there should be 3 projects');
 		const project1 = vscode.Uri.file('/test/folder/abc.sqlproj');
 		const project2 = vscode.Uri.file('/test/folder/folder1/abc1.sqlproj');
 		const project3 = vscode.Uri.file('/test/folder/folder2/abc2.sqlproj');
+
+		// Verify if the projects are sorted correctly by their paths
 		should.strictEqual(projects[0].path, project1.path);
 		should.strictEqual(projects[1].path, project2.path);
 		should.strictEqual(projects[2].path, project3.path);
@@ -315,5 +322,55 @@ suite('WorkspaceService', function (): void {
 		should.strictEqual(onWorkspaceProjectsChangedStub.calledOnce, true, 'the onDidWorkspaceProjectsChange event should have been fired');
 		should.strictEqual(updateWorkspaceFoldersStub.calledOnce, true, 'updateWorkspaceFolders should have been called');
 		onWorkspaceProjectsChangedDisposable.dispose();
+	});
+
+	test('createProject uses values from QuickPick', async () => {
+		// Arrange: Create a new instance of WorkspaceService
+		const service = new WorkspaceService();
+
+		// Arrange: Stub createProject to observe its call and return a fixed URI
+		const createProjectStub = sinon.stub(service, 'createProject').resolves(vscode.Uri.file('/tmp/TestProject'));
+
+		// Arrange: Prepare the QuickPick items to simulate user selections
+		const quickPickItems = [
+			{ label: 'Select Database Project Type', value: 'SQL Server Database', picked: true },
+			{ label: 'Enter Project Name', value: 'TestProject', picked: true },
+			{ label: 'Select Project Location', value: '/tmp/TestProject', picked: true },
+			{ label: 'Select Target Platform', value: 'SQL Server', picked: true },
+			{ label: 'SDK-style project', value: constants.YesRecommended, picked: true },
+			{ label: constants.confirmCreateProjectWithBuildTaskDialogName, value: constants.Yes, picked: true },
+		];
+
+		// Arrange: Stub showQuickPick to return each item in order for each call
+		const quickPickStub = sinon.stub(vscode.window, 'showQuickPick');
+		quickPickItems.forEach((item, idx) => {
+			quickPickStub.onCall(idx).resolves(item);
+		});
+
+		// Act: Call createProject directly with values from the simulated QuickPick selections
+		const projectUri = await service.createProject(
+			quickPickItems[1].value, // Project name
+			vscode.Uri.file(quickPickItems[2].value), // Project location as URI
+			quickPickItems[0].value, // Project type ID
+			quickPickItems[3].value, // Target platform
+			quickPickItems[4].picked, // SDK-style project flag
+			quickPickItems[5].picked  // Configure default build flag
+		);
+
+		// Assert: createProject should have been called once
+		should.strictEqual(createProjectStub.calledOnce, true, 'createProject should have been called once');
+		// Assert: The returned URI path should match the expected path
+		should.strictEqual(projectUri.path, '/tmp/TestProject', 'project URI should match the expected path');
+		// Assert: The arguments passed to createProject should match the simulated QuickPick selections
+		const callArgs = createProjectStub.getCall(0).args;
+		should.strictEqual(callArgs[0], quickPickItems[1].value, 'name should match');
+		should.strictEqual(callArgs[1].path, quickPickItems[2].value, 'location should match');
+		should.strictEqual(callArgs[2], quickPickItems[0].value, 'projectTypeId should match QuickPick label');
+		should.strictEqual(callArgs[3], quickPickItems[3].value, 'projectTargetVersion should match');
+		should.strictEqual(callArgs[4], true, 'sdkStyleProject should match');
+		should.strictEqual(callArgs[5], true, 'configureDefaultBuild should be true');
+
+		// Cleanup: Restore the stubbed showQuickPick method
+		quickPickStub.restore();
 	});
 });

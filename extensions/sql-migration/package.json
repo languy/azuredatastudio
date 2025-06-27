@@ -2,7 +2,7 @@
   "name": "sql-migration",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "1.5.5",
+  "version": "1.5.8",
   "publisher": "Microsoft",
   "preview": false,
   "license": "https://raw.githubusercontent.com/Microsoft/azuredatastudio/main/LICENSE.txt",
@@ -174,7 +174,7 @@
     ]
   },
   "dependencies": {
-    "dataprotocol-client": "github:Microsoft/sqlops-dataprotocolclient#2.0.0",
+    "dataprotocol-client": "github:Microsoft/sqlops-dataprotocolclient#2.0.1",
     "@microsoft/ads-service-downloader": "^1.2.1",
     "@microsoft/ads-extension-telemetry": "^3.0.1",
     "uuid": "^8.3.2",

@@ -17,8 +17,9 @@ import { getSDKStyleProjectInfo } from './quickpickHelper';
 /**
  * Create flow for a New Project using only VS Code-native APIs such as QuickPick
  * @param connectionInfo Optional connection info to use instead of prompting the user for a connection
+ * @param createProjectFromDatabaseCallback Optional callback function to create the project from the user inputs
  */
-export async function createNewProjectFromDatabaseWithQuickpick(connectionInfo?: IConnectionInfo): Promise<ImportDataModel | undefined> {
+export async function createNewProjectFromDatabaseWithQuickpick(connectionInfo?: IConnectionInfo, createProjectFromDatabaseCallback?: (model: ImportDataModel, connectionInfo?: string | IConnectionInfo, serverName?: string) => Promise<void>): Promise<void> {
 	const vscodeMssqlApi = await getVscodeMssqlApi();
 
 	// 1. Select connection
@@ -162,7 +163,18 @@ export async function createNewProjectFromDatabaseWithQuickpick(connectionInfo?:
 		return;
 	}
 
-	return {
+	// 8. Configure Sql project default build or not
+	const configureDefaultBuild = await vscode.window.showQuickPick(
+		[constants.yesString, constants.noString],
+		{ title: constants.confirmCreateProjectWithBuildTaskDialogName, ignoreFocusOut: false }
+	);
+
+	if (!configureDefaultBuild) {
+		// User cancelled
+		return;
+	}
+
+	const model = {
 		connectionUri: connectionUri,
 		database: selectedDatabase,
 		projName: projectName,
@@ -170,6 +182,12 @@ export async function createNewProjectFromDatabaseWithQuickpick(connectionInfo?:
 		version: '1.0.0.0',
 		extractTarget: mapExtractTargetEnum(folderStructure),
 		sdkStyle: sdkStyle,
-		includePermissions: includePermissions
-	};
+		includePermissions: includePermissions,
+		configureDefaultBuild: configureDefaultBuild === constants.yesString,
+	} as ImportDataModel;
+
+	// 9. Create the project using the callback
+	if (createProjectFromDatabaseCallback) {
+		await createProjectFromDatabaseCallback(model, connectionProfile, connectionProfile.server);
+	}
 }

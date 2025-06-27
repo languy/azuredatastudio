@@ -148,6 +148,13 @@ export class WorkspaceService implements IWorkspaceService {
 		this.excludedProjects = this.getWorkspaceConfigurationValue<string[]>(ExcludedProjectsConfigurationName);
 		this.openedProjects = this.openedProjects.filter(project => !this.excludedProjects?.find(excludedProject => excludedProject === vscode.workspace.asRelativePath(project)));
 
+		// Sort the projects based on the project name extracted from the path property
+		this.openedProjects = this.openedProjects.sort((a, b) => {
+			const projectA = path.basename(a?.path ?? '');
+			const projectB = path.basename(b?.path ?? '');
+			return projectA.localeCompare(projectB);
+		});
+
 		Logger.log(`Finished looking for projects in workspace. Opened: ${this.openedProjects.length}. Excluded: ${this.excludedProjects.length}. Total time = ${new Date().getTime() - startTime}ms`);
 
 		// filter by specified extension
@@ -220,10 +227,10 @@ export class WorkspaceService implements IWorkspaceService {
 		return ProjectProviderRegistry.getProviderByProjectExtension(projectType);
 	}
 
-	async createProject(name: string, location: vscode.Uri, projectTypeId: string, projectTargetVersion?: string, sdkStyleProject?: boolean): Promise<vscode.Uri> {
+	async createProject(name: string, location: vscode.Uri, projectTypeId: string, projectTargetVersion?: string, sdkStyleProject?: boolean, configureDefaultBuild?: boolean): Promise<vscode.Uri> {
 		const provider = ProjectProviderRegistry.getProviderByProjectType(projectTypeId);
 		if (provider) {
-			const projectFile = await provider.createProject(name, location, projectTypeId, projectTargetVersion, sdkStyleProject);
+			const projectFile = await provider.createProject(name, location, projectTypeId, projectTargetVersion, sdkStyleProject, configureDefaultBuild);
 			await this.addProjectsToWorkspace([projectFile]);
 			this._onDidWorkspaceProjectsChange.fire();
 			return projectFile;

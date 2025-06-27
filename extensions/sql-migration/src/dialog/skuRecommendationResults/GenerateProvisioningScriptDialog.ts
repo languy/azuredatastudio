@@ -11,7 +11,7 @@ import { MigrationStateModel } from '../../models/stateMachine';
 import * as constants from '../../constants/strings';
 import * as styles from '../../constants/styles';
 import * as utils from '../../api/utils';
-import { logError, TelemetryViews } from '../../telemetry';
+import { logError, TelemetryViews, sendButtonClickEvent, TelemetryAction, sendSqlMigrationActionEvent } from '../../telemetry';
 import { IconPathHelper } from '../../constants/iconPathHelper';
 import { SelectStorageAccountDialog } from './SelectStorageAccountDialog';
 
@@ -86,7 +86,7 @@ export class GenerateProvisioningScriptDialog {
 		const saveTemplateButton = _view.modelBuilder.button()
 			.withProps({
 				buttonType: azdata.ButtonType.Normal,
-				label: constants.TARGET_PROVISIONING_TITLE,
+				label: constants.SAVE_TO_DEVICE,
 				width: 117,
 				height: 36,
 				iconHeight: 16,
@@ -108,6 +108,12 @@ export class GenerateProvisioningScriptDialog {
 						fs.writeFileSync(destinationFilePath!, this._armTemplateText!);
 					}
 					void vscode.window.showInformationMessage(constants.SAVE_TEMPLATE_SUCCESS);
+					// emit Telemetry for the success.
+					sendSqlMigrationActionEvent(
+						TelemetryViews.ProvisioningScriptWizard,
+						TelemetryAction.SaveArmTemplateSuccess,
+						{}, {}
+					);
 				}
 				catch (e) {
 					logError(TelemetryViews.ProvisioningScriptWizard, 'ArmTemplateSavetoLocalError', e);
@@ -120,11 +126,11 @@ export class GenerateProvisioningScriptDialog {
 			.withProps({
 				buttonType: azdata.ButtonType.Normal,
 				label: constants.UPLOAD_TEMPLATE_TO_AZURE,
-				width: 180,
+				width: 170,
 				height: 36,
 				iconHeight: 16,
 				iconWidth: 16,
-				iconPath: IconPathHelper.import,
+				iconPath: IconPathHelper.Azure,
 				CSSStyles: {
 					...styles.TOOLBAR_CSS
 				}
@@ -133,6 +139,33 @@ export class GenerateProvisioningScriptDialog {
 		uploadTemlateToAzureButton.onDidClick(async () => {
 			const selectAzureAccountDialog = new SelectStorageAccountDialog(this.model, this._targetType);
 			await selectAzureAccountDialog.initialize();
+		});
+
+		const copyToClipboardButton = _view.modelBuilder.button()
+			.withProps({
+				buttonType: azdata.ButtonType.Normal,
+				label: constants.COPY_TO_CLIPBOARD,
+				width: 130,
+				height: 36,
+				iconHeight: 16,
+				iconWidth: 16,
+				iconPath: IconPathHelper.copy,
+				CSSStyles: {
+					...styles.TOOLBAR_CSS
+				}
+			}).component();
+
+		copyToClipboardButton.onDidClick(async () => {
+			if (this.model._armTemplateResult?.templates?.[0]) {
+				void vscode.env.clipboard.writeText(this.model._armTemplateResult.templates[0]);
+				void vscode.window.showInformationMessage(constants.COPY_TEMPLATE_SUCCESS);
+				// emit Telemetry for the success.
+				sendSqlMigrationActionEvent(
+					TelemetryViews.ProvisioningScriptWizard,
+					TelemetryAction.CopyArmTemplateSuccess,
+					{}, {}
+				);
+			}
 		});
 
 		const buttonsContainer = _view.modelBuilder.flexContainer().withProps({
@@ -145,8 +178,10 @@ export class GenerateProvisioningScriptDialog {
 			}
 		}).component();
 
-		buttonsContainer.addItem(saveTemplateButton);
 		buttonsContainer.addItem(uploadTemlateToAzureButton);
+		buttonsContainer.addItem(saveTemplateButton);
+		buttonsContainer.addItem(copyToClipboardButton)
+
 
 		const container = _view.modelBuilder.flexContainer().
 			withProps({
@@ -165,11 +200,15 @@ export class GenerateProvisioningScriptDialog {
 	}
 
 	private async displayArmTemplate(): Promise<void> {
-		this._armTemplateTextBox.value = this.model._armTemplateResult.templates ?
-			this.model._armTemplateResult.templates[0] :
-			this.model._armTemplateResult.generateTemplateError?.message;
+		if (this.model._armTemplateResult?.templates?.[0]) {
+			this._armTemplateTextBox.value = this.model._armTemplateResult.templates[0];
+		}
+		else {
+			this._armTemplateTextBox.value = constants.ARM_TEMPLATE_GENERATE_FAILED;
+			await vscode.window.showErrorMessage(constants.ARM_TEMPLATE_GENERATE_FAILED);
+		}
 
-		if (this.model._armTemplateResult.templates?.length! > 1 && this._targetType === utils.MigrationTargetType.SQLDB) {
+		if (this.model._armTemplateResult?.templates?.length! > 1 && this._targetType === utils.MigrationTargetType.SQLDB) {
 			await vscode.window.showInformationMessage(constants.DISPLAY_ARM_TEMPLATE_LIMIT);
 		}
 	}
@@ -178,7 +217,7 @@ export class GenerateProvisioningScriptDialog {
 		if (!this._isOpen) {
 			this._isOpen = true;
 
-			this.dialog = azdata.window.createModelViewDialog(constants.TARGET_PROVISIONING_TITLE, 'ViewArmTemplateDialog', 'medium');
+			this.dialog = azdata.window.createModelViewDialog(constants.UPLOAD_TEMPLATE_TO_AZURE, 'ViewArmTemplateDialog', 'medium');
 
 			this.dialog.okButton.label = constants.CLOSE_DIALOG;
 			this.dialog.okButton.position = 'left';
@@ -191,8 +230,10 @@ export class GenerateProvisioningScriptDialog {
 			azdata.window.openDialog(this.dialog);
 			await Promise.all(dialogSetupPromises);
 
-			const skuRecommendationReportFilePath = this.getSkuRecommendationReportFilePath(this._targetType);
-			await this.model.getArmTemplate(skuRecommendationReportFilePath);
+			// emit Telemetry for opening of Wizard.
+			sendButtonClickEvent(this.model, TelemetryViews.ProvisioningScriptWizard, TelemetryAction.OpenTargetProvisioningWizard, "", constants.UPLOAD_TEMPLATE_TO_AZURE);
+
+			await this.model.getArmTemplate(this._targetType);
 			const error = this.model._armTemplateResult.generateTemplateError;
 
 			if (error) {
@@ -204,17 +245,6 @@ export class GenerateProvisioningScriptDialog {
 
 			await this.displayArmTemplate();
 		}
-	}
-
-	private getSkuRecommendationReportFilePath(targetType: string): string {
-		let fileName;
-		this.model._skuRecommendationReportFilePaths.forEach(function (filePath) {
-			if (filePath.includes(targetType)) {
-				fileName = filePath.substring(0, filePath.lastIndexOf(".")) + ".json";
-			}
-		});
-
-		return fileName!;
 	}
 
 	protected async execute() {
